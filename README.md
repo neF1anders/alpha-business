@@ -1,0 +1,51 @@
+# Альфа Инсайты: C4-диаграмма (Structurizr DSL)
+Файл: `docs/workspace.dsl`. Проверен `structurizr-cli validate` и `export` (без ошибок). Схема пайплайна: `docs/pipeline.mmd`.
+## Виды
+| Ключ | Что показывает |
+|---|---|
+| `01-context` | L1: ЛПР, команда банка, внешние источники, LLM-шлюз, CRM |
+| `02-containers` | L2: F1 оболочка, F2 ассистент, F3 консоль, BFF, Ingestion Worker, Insight Service, хранилище, очередь |
+| `03-components-ingestion` | L3: хуки → коннекторы → санитайзер → дедуп → классификатор → эмбеддер → индексатор → база; парсер материалов банка |
+| `04-components-insight-service` | L3: конструктор запроса → retriever → реранкер → оркестратор → саммаризатор → сборщик claims → LLM-judge (уверенность) → API |
+| `05-flow-new-news` | Сценарий: пришла новость |
+| `06-flow-banner` | Сценарий: баннеры по тегам компании |
+| `07-flow-chat` | Сценарий: вопрос в чате или раскрытие баннера |
+## Как закомпилировать
+DSL нельзя «собрать» обычным компилятором: его читает `structurizr-cli`, проверяет и экспортирует виды в другие форматы (Mermaid, PlantUML, DOT, JSON). Файл лежит в `docs/workspace.dsl`, команды запускаются из корня проекта.
+
+### Один раз: установка
+Нужна Java 17+ (`java -version`). Дальше:
+```bash
+mkdir -p ~/.local/share/structurizr-cli ~/.local/bin
+curl -sL -o /tmp/structurizr-cli.zip https://github.com/structurizr/cli/releases/latest/download/structurizr-cli.zip
+unzip -q -o /tmp/structurizr-cli.zip -d ~/.local/share/structurizr-cli
+ln -sf ~/.local/share/structurizr-cli/structurizr.sh ~/.local/bin/structurizr-cli
+structurizr-cli version   # проверка; ~/.local/bin должен быть в PATH
+```
+
+### Каждый раз: DSL → Mermaid
+```bash
+scripts/build-diagrams.sh
+```
+Скрипт проверяет `docs/workspace.dsl` и кладёт по файлу на каждый вид в `docs/diagrams/structurizr-<ключ-вида>.mmd` (например, `structurizr-02-containers.mmd`). Папка `docs/diagrams/` генерируется: правьте DSL, а не `.mmd`. Если после запуска нет ошибок, DSL корректен.
+
+То же вручную:
+```bash
+structurizr-cli validate -workspace docs/workspace.dsl                                   # только проверка
+structurizr-cli export -workspace docs/workspace.dsl -format mermaid -output docs/diagrams   # plantuml, dot, json — другие форматы
+```
+
+### Просмотр в VS Code
+- `.mmd`: расширение `vstirbu.vscode-mermaid-preview`, команда «Mermaid Preview: Preview Diagram» (открыть `docs/pipeline.mmd` или любой файл из `docs/diagrams/`).
+- `.dsl`: расширение `ciarant.vscode-structurizr` даёт подсветку и подсказки. Картинку DSL VS Code сам не рисует, поэтому открывайте сгенерированные `.mmd` (после правки DSL перезапустите скрипт).
+- Интерактивный просмотр всех видов с автолайаутом в браузере (нужен docker), http://localhost:8080:
+  ```bash
+  docker run -it --rm -p 8080:8080 -v $PWD/docs:/usr/local/structurizr structurizr/lite
+  ```
+  Lite ищет файл `workspace.dsl` в смонтированной папке, поэтому монтируется `docs/`.
+
+## Допущения
+- «Jev» прочитан как **LLM-judge** (компонент `confidenceJudge`). Высокая уверенность → резюме; низкая → оркестратор показывает саму новость или повторяет поиск.
+- Роутер LLM и бюджет вынесены в отдельный компонент, чтобы показать лимит 500 ₽ в день.
+- Компонент «Доступ и политики» — место для RBAC и allow-list инструментов (требование про безопасность ИИ).
+- Выдача строится двумя путями: баннеры — запрос по тегам компании и роли; чат — запрос из контекста вопроса и экрана. Дальше один и тот же retriever → ranker → оркестратор.
