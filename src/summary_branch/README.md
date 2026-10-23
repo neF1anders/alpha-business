@@ -1,6 +1,6 @@
 # summary_branch: сигнал → саммари → баннеры
 
-Ветка берёт `SummaryRequest` от оркестратора и отдаёт либо готовые баннеры в хранилище (`mode=banner`), либо один `ChatAnswer` (`mode=chat`). Поиск, ранжирование, профили, LLM-шлюз и BFF снаружи.
+Ветка берёт `SummaryRequest` от оркестратора и отдаёт либо готовые баннеры в хранилище (`mode=banner`), либо один `ChatAnswer` (`mode=chat`). Поиск, ранжирование, профили компаний и BFF снаружи.
 
 ## Как работает
 
@@ -13,10 +13,12 @@ SummaryRequest ─ кластер × сегмент ─► SegmentCache ─пр�
 ```
 
 - **Дорого и общее** считается один раз на пару «кластер × сегмент» и лежит в `SegmentCache`. LLM вызывается только при промахе.
-- **Дёшево и личное** (релевантность, свежесть, строка «для вас», срок жизни) считается на каждую компанию без токенов.
+- **Дёшево и личное** (релевантность, свежесть, строка «для вас», срок жизни) считается на каждую компанию без токенов. Строка «для вас» берётся из шаблона модели: в слот `{feature}` подставляется признак компании (`features`), при отсутствии подходящего или пустом шаблоне берётся запасной текст.
+- **Новое событие в кластере:** `runtime.invalidate_cluster(...)` сбрасывает и кэш саммари, и баннеры; следующий прогон пересобирает текст. Без этого кэш (TTL 72 ч) отдавал бы старое саммари.
 - **Решение по уверенности** (`scoring.py`): ≥ 0.75 баннер, 0.55–0.75 баннер с `caveat`, ниже только заголовок и ссылка (`raw_news`), нет источников — баннера нет. Число, которого нет в источнике, ограничивает оценку 0.5.
 - **Чат** ничего не пишет в `BannerStore`; при низкой уверенности или сбое модели возвращает `raw_news=True` с главной новостью.
-- **Бюджет:** `full` обычный вызов, `lite` короткий без повтора, `cached_only` вызов запрещён (баннер пропускается, чат отвечает новостью).
+- **Режим бюджета запроса** (`req.budget`, задаёт оркестратор): `full` обычный вызов, `lite` короткий без повтора, `cached_only` вызов модели запрещён (баннер пропускается, чат отвечает новостью).
+- **Параллельность:** кластеры одного запроса `handle_banner` суммаризируются параллельно в потоках (до `max_parallel_clusters`), публикация идёт последовательно.
 - **Безопасность:** новости, материалы банка, вопрос и теги компании вставляются в промпт как данные в экранированных разделителях; в промпте запрещены инвестиционные рекомендации.
 
 ## Контракты
@@ -26,10 +28,10 @@ SummaryRequest ─ кластер × сегмент ─► SegmentCache ─пр�
 | Вход | `models.SummaryRequest` | `trace_id`, `mode`, `question` (только chat), `company`, `news[]` по убыванию `rerank_score`, `bank_materials[]` (с обязательным `url`), `budget` |
 | Выход banner | `list[Banner]`; в хранилище лежит ещё `BannerDTO` | личная часть: `for_you`, `confidence`, `decision`, `expires_at` |
 | Выход chat | `models.ChatAnswer` | `claims`, `sources`, `caveat`, `raw_news`, `follow_ups`, `confidence` |
-| Вход бэка | `LLMClient.generate_json(prompt, schema, *, tier, trace_id) -> dict` | `tier` = `"full"` / `"lite"`; готовая реализация: `llm_gateway.OpenAICompatibleLLMClient` |
+| Вход бэка | `LLMClient.generate_json(prompt, schema, *, tier, trace_id) -> dict` | `tier` = режим запроса (`"banner"` / `"chat"`), по нему клиент выбирает модель; готовая реализация: `llm_gateway.OpenAICompatibleLLMClient` |
 | Справочник | `CompanyDirectory` | `active_in_segment(segment_id)`, `get(company_id)` |
-| Кэш | `SegmentCache` | `get(key)`, `put(item, ttl_s)` |
-| Хранилище | `BannerStore` | `put -> bool` (новый ли баннер), `top_k`, `mark_seen`, `suppress`, `invalidate_cluster` |
+| Кэш | `SegmentCache` | `get(key)`, `put(item, ttl_s)`, `invalidate_cluster(cluster_id) -> int` |
+| Хранилище | `BannerStore` | `put -> bool` (новый и не скрытый ли баннер: пушить можно только при `True`), `top_k`, `mark_seen`, `suppress`, `invalidate_cluster` |
 
 ## Внедрение в бэк после оркестратора
 
@@ -38,7 +40,7 @@ from summary_branch import build_branch, BranchConfig
 from summary_branch.llm_gateway import OpenAICompatibleLLMClient
 
 runtime = build_branch(
-    llm=OpenAICompatibleLLMClient.from_env(),   # шлюз команды, ключ API_KEY из .env или окружения
+    llm=OpenAICompatibleLLMClient.from_env(),   # ключ API_KEY из .env или окружения
     directory=company_directory, # реализация CompanyDirectory
     # store и cache не передаём: для MVP работают in-memory (позже Redis/Postgres через те же интерфейсы)
     push_handler=sse_push,       # Callable[[company_id, list[BannerDTO]], None]
@@ -50,14 +52,14 @@ answer = runtime.branch.handle_chat(request)      # ответ в реально
 signals = runtime.top_banners(company_id)         # GET /signals, не более top_k_serve
 runtime.store.mark_seen(company_id, banner_id)    # обратная связь
 runtime.store.suppress(company_id, banner_id, "не про меня")
-runtime.store.invalidate_cluster(cluster_id, "новое событие")
+runtime.invalidate_cluster(cluster_id, "новое событие")   # кэш саммари + баннеры кластера
 ```
 
 Условия корректной работы:
 - Время `published_at` с часовым поясом (UTC); новости отсортированы по убыванию `rerank_score`; `segment_id` приходит готовым.
 - В режиме `banner` вопроса нет, в `chat` он обязателен; иначе `SummaryRequest` не создастся (`ValidationError`).
-- Ветка синхронная. В асинхронном бэке вызывать через `asyncio.to_thread`.
-- In-memory хранилища (по умолчанию) живут в одном процессе, защищены блокировкой, отдают копии объектов и сами чистят просроченное. Перезапуск процесса стирает баннеры и кэш саммари, то есть следующий прогон снова тратит бюджет LLM.
+- Ветка синхронная (внутри `handle_banner` кластеры идут параллельно в потоках). В асинхронном бэке вызывать через `asyncio.to_thread`.
+- In-memory хранилища (по умолчанию) живут в одном процессе, защищены блокировкой, отдают копии объектов и сами чистят просроченное. Перезапуск процесса стирает баннеры и кэш саммари, то есть следующий прогон снова вызывает LLM.
 - `handle_banner` и `handle_chat` не бросают исключений из-за модели: сбой, невалидный JSON после повтора и `cached_only` без кэша логируются, кластер пропускается (баннер) или отдаётся новостью (чат).
 
 ## Логи
@@ -66,19 +68,19 @@ runtime.store.invalidate_cluster(cluster_id, "новое событие")
 
 ## LLM-адаптер
 
-`llm_gateway.py`: OpenAI-совместимый шлюз по HTTPS, только стандартная библиотека. Настройки из `.env` (`API_KEY`) и окружения, см. `.env.example`.
-- `full` → `deepseek/deepseek-v4.1-flash`, `lite` → `z-ai/glm-5.3-flash` (стартовый выбор, меняется через `LLM_MODEL_FULL/LITE`).
-- Запасной адрес шлюза, повтор при 429/5xx/таймауте, разбор ответа с `<think>` и markdown-ограждением.
-- Рассуждение моделей отключено (`reasoning.enabled=false`): иначе они тратят весь `max_tokens` на скрытые мысли и возвращают пустой ответ, а вызов дороже в ~5 раз.
-- «Budget has been exceeded» → клиент перестаёт ходить в сеть до 3:00 МСК; ветка в это время пропускает кластеры и отвечает в чате новостью.
-- Счётчики `calls`, `prompt_tokens`, `completion_tokens`, `cost` (единицы `cost` задаёт шлюз). Ключ не попадает в логи и `repr`.
+`llm_gateway.py`: OpenAI-совместимый шлюз по HTTPS, только стандартная библиотека. Ключ `API_KEY` берётся из `.env` и окружения (окружение приоритетнее), см. `.env.example`.
+- **Маршрут по режиму запроса.** `banner`: сначала самая дешёвая по входным токенам (`deepseek/deepseek-v4.1-flash`, запасные `google/gemma-4-26b-a4b-it`, `qwen/qwen3.6-35b-a3b`). `chat`: сначала самая быстрая (`qwen/qwen3.6-35b-a3b`, запасная `deepseek/deepseek-v4.1-flash`). Порядок выбран замером на шлюзе команды; при смене шлюза его надо повторить. Меняется через `LLM_MODELS_BANNER` и `LLM_MODELS_CHAT` (модели через запятую, первая основная).
+- **Отказоустойчивость.** Повтор при 429/5xx/таймауте, запасной адрес шлюза, затем следующая модель маршрута (в том числе при 403/404 на модель). Неверный ключ (401) прерывает цепочку сразу. Если все модели недоступны, ветка пропускает кластер (баннер) или отвечает новостью (чат).
+- **Разбор ответа.** Убирает `<think>`, markdown-ограждение и текст вокруг JSON; обрезанный по `max_tokens` или пустой ответ считается невалидным (саммаризатор делает один повтор).
+- **Рассуждение моделей отключено** (`reasoning.enabled=false`): иначе они тратят весь `max_tokens` на скрытые мысли и возвращают пустой ответ.
+- Счётчики `calls`, `prompt_tokens`, `completion_tokens`. Ключ не попадает в логи и `repr`.
 
 ## Проверка
 
 ```
 uv run pytest                                    # тесты на заглушках, без сети
 uv run python scripts/demo_summary_branch.py     # демо: два сегмента, три компании, повтор через кэш
-uv run python scripts/demo_summary_branch.py --live   # то же на реальном шлюзе (тратит бюджет)
+uv run python scripts/demo_summary_branch.py --live   # то же на реальном шлюзе (реальные вызовы)
 ```
 
 Заглушки `FakeLLMClient` и `StaticDirectory` в `fakes.py` подходят для тестов бэка. Отклонения от исходной спецификации: `CHANGES.md`. Подробности потока и метрик: `summary-branch-dataflow.md`.

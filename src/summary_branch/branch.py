@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from .config import BranchConfig
 from .errors import BudgetExhausted, SummarizationFailed
@@ -11,7 +13,8 @@ from .interfaces import (
     Summarizer,
 )
 from .models import (
-    Banner, ChatAnswer, CompanyContext, Decision, RankedNewsItem, Severity, SourceRef, SummaryRequest,
+    Banner, ChatAnswer, CompanyContext, Decision, RankedNewsItem, SegmentSummary, Severity, SourceRef,
+    SummaryRequest,
 )
 from .scoring import company_confidence, lead_from_news
 from .segment_builder import SegmentBuilder
@@ -43,23 +46,35 @@ class DefaultSummaryBranch:
     def handle_banner(self, req: SummaryRequest) -> list[Banner]:
         companies = self._segment_companies(req.company)
         created: list[Banner] = []
-        for cluster_news in self._top_clusters(req):
-            cluster_req = req.model_copy(update={"news": cluster_news})
-            cluster_id = cluster_news[0].cluster_id
-            try:
-                seg = self._segment_builder.build(cluster_req)
-            except (SummarizationFailed, BudgetExhausted) as exc:
-                log.warning("кластер пропущен: trace_id=%s cluster=%s reason=%s: %s",
-                            req.trace_id, cluster_id, type(exc).__name__, exc)
-                continue
+        for seg in self._build_segments(req, self._top_clusters(req)):
             if seg is None:
-                log.warning("кластер пропущен: trace_id=%s cluster=%s reason=пустое саммари", req.trace_id, cluster_id)
                 continue
             for company in companies:
                 banner = self._publish_for_company(req.trace_id, seg, company)
                 if banner is not None:
                     created.append(banner)
         return created
+
+    def _build_segments(self, req: SummaryRequest,
+                        clusters: list[list[RankedNewsItem]]) -> list[Optional[SegmentSummary]]:
+        """Саммари кластеров считаются параллельно (основное время уходит на LLM); порядок результата сохраняется."""
+        workers = min(len(clusters), self._config.max_parallel_clusters)
+        if workers <= 1:
+            return [self._build_segment(req, news) for news in clusters]
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            return list(pool.map(lambda news: self._build_segment(req, news), clusters))
+
+    def _build_segment(self, req: SummaryRequest, cluster_news: list[RankedNewsItem]) -> Optional[SegmentSummary]:
+        cluster_id = cluster_news[0].cluster_id
+        try:
+            seg = self._segment_builder.build(req.model_copy(update={"news": cluster_news}))
+        except (SummarizationFailed, BudgetExhausted) as exc:
+            log.warning("кластер пропущен: trace_id=%s cluster=%s reason=%s: %s",
+                        req.trace_id, cluster_id, type(exc).__name__, exc)
+            return None
+        if seg is None:
+            log.warning("кластер пропущен: trace_id=%s cluster=%s reason=пустое саммари", req.trace_id, cluster_id)
+        return seg
 
     def _top_clusters(self, req: SummaryRequest) -> list[list[RankedNewsItem]]:
         by_cluster: dict[str, list[RankedNewsItem]] = {}

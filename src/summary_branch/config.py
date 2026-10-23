@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class BranchConfig(BaseModel):
     max_clusters_per_request: int = Field(default=3, ge=1)
     top_k_serve: int = Field(default=3, ge=1)
+    max_parallel_clusters: int = Field(default=3, ge=1)
     cache_ttl_s: int = Field(default=72 * 3600, gt=0)
     banner_ttl_h: dict[str, int] = Field(default_factory=lambda: {"rate": 72, "fx": 24})
     banner_ttl_default_h: int = Field(default=36, gt=0)

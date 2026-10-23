@@ -26,6 +26,14 @@ class BranchRuntime:
     cache: SegmentCache
     config: BranchConfig
 
+    def invalidate_cluster(self, cluster_id: str, reason: str) -> int:
+        """Новое событие в кластере: сбрасывает и кэш саммари, и баннеры, чтобы следующий прогон пересобрал текст.
+
+        Возвращает число снятых баннеров.
+        """
+        self.cache.invalidate_cluster(cluster_id)
+        return self.store.invalidate_cluster(cluster_id, reason)
+
     def top_banners(self, company_id: str, now: Optional[datetime] = None) -> list[BannerDTO]:
         """Выдача для GET /signals: лучшие баннеры компании, не более config.top_k_serve."""
         return self.store.top_k(company_id, self.config.top_k_serve, now)

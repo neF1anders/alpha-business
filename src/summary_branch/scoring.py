@@ -179,7 +179,7 @@ def company_confidence(signals: ContentSignals, lead: LeadRef, topic: str, compa
 def render_for_you(template: str, fallback: str, company: CompanyContext, claims_text: str) -> str:
     """Подставляет в {feature} признак компании, лучше всего совпавший с текстом утверждений. Нет совпадения - fallback."""
     if "{feature}" not in template:
-        return template
+        return template or fallback
     ctx = _stems(claims_text + " " + template)
     best, best_ov = None, 0.0
     for f in company.features:

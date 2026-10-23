@@ -176,3 +176,46 @@ def test_chat_falls_back_to_raw_news_on_model_errors(llm_kwargs, budget):
     assert answer.raw_news and answer.claims == [] and answer.sources
     if budget == BudgetTier.CACHED_ONLY:
         assert llm.call_count == 0
+
+
+def test_runtime_invalidate_cluster_forces_resummarization_and_new_push():
+    pushed = []
+    llm, rt = runtime(push_handler=lambda cid, dtos: pushed.append(cid))
+    rt.branch.handle_banner(make_req())
+    assert llm.call_count == 1 and len(pushed) == 2
+    assert rt.invalidate_cluster("c1", "новое событие") == 2
+    rt.branch.handle_banner(make_req())
+    assert llm.call_count == 2                       # саммари пересобрано, а не взято из кэша
+    assert len(pushed) == 4                          # заменённый баннер считается новым
+    assert len(rt.top_banners("co1")) == 1
+
+
+def test_clusters_are_summarized_in_parallel_and_order_is_kept():
+    import threading
+    barrier = threading.Barrier(3, timeout=3)      # пройдёт, только если три вызова LLM идут одновременно
+
+    class WaitingLLM(FakeLLMClient):
+        def generate_json(self, prompt, schema, *, tier, trace_id):
+            barrier.wait()
+            return super().generate_json(prompt, schema, tier=tier, trace_id=trace_id)
+
+    news = [make_news(f"n{i}", f"c{i}", rerank_score=0.9 - i / 10) for i in range(3)]
+    llm = WaitingLLM()
+    rt = build_branch(llm, StaticDirectory(COMPANIES))
+    banners = rt.branch.handle_banner(make_req(news=news))
+    assert llm.call_count == 3
+    assert [b.key.cluster_id for b in banners if b.company_id == "co1"] == ["c0", "c1", "c2"]
+
+
+def test_one_failing_cluster_does_not_block_the_others():
+    class FlakyLLM(FakeLLMClient):
+        def generate_json(self, prompt, schema, *, tier, trace_id):
+            if "Курс юаня" in prompt:
+                raise TimeoutError("router timeout")
+            return super().generate_json(prompt, schema, tier=tier, trace_id=trace_id)
+
+    news = [make_news("n1", "c1", rerank_score=0.9),
+            make_news("n2", "c2", title="Курс юаня вырос до 12,5 рубля", text="Курс юаня вырос до 12,5 рубля.",
+                      rerank_score=0.8)]
+    rt = build_branch(FlakyLLM(), StaticDirectory(COMPANIES))
+    assert {b.key.cluster_id for b in rt.branch.handle_banner(make_req(news=news))} == {"c1"}

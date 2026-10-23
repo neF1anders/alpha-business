@@ -45,6 +45,15 @@ class InMemorySegmentCache:
             self._items[item.key] = (item.model_copy(deep=True), now + timedelta(seconds=ttl_s))
 
 
+    def invalidate_cluster(self, cluster_id: str) -> int:
+        with self._lock:
+            stale = [key for key in self._items if key.cluster_id == cluster_id]
+            for key in stale:
+                del self._items[key]
+        log.info("кэш сегментов: кластер сброшен cluster=%s removed=%d", cluster_id, len(stale))
+        return len(stale)
+
+
 class InMemoryBannerStore:
     """Личный индекс баннеров компаний. Состояния «показан» и «скрыт» живут отдельно от самих баннеров."""
 

@@ -83,7 +83,7 @@ def main() -> None:
         runtime.branch.handle_banner(request)
     print(f"Новых вызовов LLM: {llm_calls(llm) - calls_before}; попаданий в кэш: {runtime.cache.hits}")
     if live:
-        print(f"Токены: prompt={llm.prompt_tokens} completion={llm.completion_tokens} cost={llm.cost:.3f}")
+        print(f"Токены: prompt={llm.prompt_tokens} completion={llm.completion_tokens}")
 
 
 if __name__ == "__main__":

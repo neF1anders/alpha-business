@@ -173,3 +173,14 @@ def test_concurrent_access_does_not_break_store():
         for future in [pool.submit(worker, i) for i in range(8)]:
             future.result()
     assert len(store.top_k("co1", 3)) <= 3
+
+
+def test_segment_cache_invalidate_cluster_drops_all_segments_and_versions():
+    cache = InMemorySegmentCache()
+    keys = [ContentKey(cluster_id="c1", segment_id=s, prompt_version=v) for s in ("a", "b") for v in ("v1", "v2")]
+    other = ContentKey(cluster_id="c2", segment_id="a", prompt_version="v1")
+    for k in (*keys, other):
+        cache.put(_summary(k), ttl_s=60)
+    assert cache.invalidate_cluster("c1") == 4
+    assert all(cache.get(k) is None for k in keys) and cache.get(other) is not None
+    assert cache.invalidate_cluster("c1") == 0

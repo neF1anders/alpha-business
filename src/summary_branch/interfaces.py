@@ -47,6 +47,8 @@ class ConfidenceScorer(Protocol):
 class SegmentCache(Protocol):
     def get(self, key: ContentKey) -> Optional[SegmentSummary]: ...
     def put(self, item: SegmentSummary, ttl_s: int) -> None: ...
+    def invalidate_cluster(self, cluster_id: str) -> int:
+        """Удаляет сегментные саммари кластера (для всех сегментов и версий промпта). Возвращает их число."""
 
 
 @runtime_checkable

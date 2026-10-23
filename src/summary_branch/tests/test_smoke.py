@@ -86,3 +86,9 @@ def test_selection_diversity():
                       for_you="f", confidence=0.9, decision=Decision.SHOW_SUMMARY)
     bs = [mk(1, "rate", Severity.ATTENTION), mk(2, "rate", Severity.ATTENTION), mk(3, "labor", Severity.WATCH)]
     assert {b.topic for b in pick_top_k(bs, 2)} == {"rate", "labor"}
+
+
+def test_for_you_empty_template_falls_back():
+    req = make_req()
+    assert render_for_you("", "Общий текст", req.company, "кредиты") == "Общий текст"
+    assert render_for_you("Без слота", "Общий текст", req.company, "кредиты") == "Без слота"

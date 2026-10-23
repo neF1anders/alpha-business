@@ -39,9 +39,15 @@ _SYSTEM_COMMON = f"""Ты аналитик банка. Подготовь кра
 3. В evidence_ids указывай только news_id и doc_id из данных запроса.
 4. Числа переписывай без изменений: не округляй, не пересчитывай, не выдумывай.
 5. headline не длиннее 60 символов.
-6. for_you_template содержит слот {{feature}} либо пустая строка; for_you_fallback обязателен.
+6. for_you_template — одна фраза до 140 символов в формате «У вас {{feature}}: ...». Слот {{feature}} заменится \
+признаком компании в именительном падеже («3 кредитных продукта», «экспорт в ЕАЭС», «валютная выручка»), поэтому фраза \
+должна быть грамматически верна для любого такого признака. Если связи с признаками компании нет, шаблон — пустая \
+строка. for_you_fallback обязателен: та же мысль без слота, до 140 символов.
 7. {NO_ADVICE_RULE}
-8. topic — макрофактор: rate, fx, labor, demand и т. п.; severity: attention | watch | opportunity."""
+8. topic — макрофактор: rate, fx, labor, demand и т. п.
+9. severity: attention — событие требует реакции или пересмотра планов в ближайшие дни (решение по ключевой ставке, \
+резкое движение курса, санкции и ограничения); opportunity — возможность, которой можно воспользоваться; \
+watch — фон, который стоит держать в поле зрения."""
 
 _MODE_RULES = {
     Mode.BANNER: ("Режим banner: текст общий для всех компаний сегмента, не упоминай конкретную компанию. "
@@ -106,6 +112,7 @@ class LlmSummarizer:
             raise BudgetExhausted("бюджет в режиме cached_only: вызов модели запрещён")
         prompt = build_prompt(req, self._config)
         schema = SummaryDraft.model_json_schema()
+        tier = req.mode.value   # маршрут модели: banner — дешёвая по входу, chat — быстрая
         attempts = 1 if req.budget == BudgetTier.LITE else 2   # lite — без повторов
         last_error = ""
         for attempt in range(attempts):
@@ -114,18 +121,18 @@ class LlmSummarizer:
                 "Верни строго JSON по схеме.")
             started = time.monotonic()
             try:
-                raw = self._llm.generate_json(current, schema, tier=req.budget.value, trace_id=req.trace_id)
+                raw = self._llm.generate_json(current, schema, tier=tier, trace_id=req.trace_id)
                 draft = SummaryDraft.model_validate(raw)
             except ValueError as exc:   # JSONDecodeError и ValidationError наследуют ValueError
                 last_error = str(exc)
                 log.warning("невалидный ответ модели: trace_id=%s tier=%s attempt=%d error=%s",
-                            req.trace_id, req.budget.value, attempt + 1, type(exc).__name__)
+                            req.trace_id, tier, attempt + 1, type(exc).__name__)
                 continue
             except Exception as exc:    # сбой шлюза: ретраи и таймауты остаются за роутером
-                log.error("сбой LLM-клиента: trace_id=%s tier=%s error=%s", req.trace_id, req.budget.value,
+                log.error("сбой LLM-клиента: trace_id=%s tier=%s error=%s", req.trace_id, tier,
                           type(exc).__name__)
                 raise SummarizationFailed(f"LLM-клиент недоступен: {type(exc).__name__}") from exc
             log.info("вызов модели: trace_id=%s tier=%s attempt=%d latency_ms=%d claims=%d", req.trace_id,
-                     req.budget.value, attempt + 1, (time.monotonic() - started) * 1000, len(draft.claims))
+                     tier, attempt + 1, (time.monotonic() - started) * 1000, len(draft.claims))
             return draft
         raise SummarizationFailed(f"модель не вернула валидный JSON за {attempts} попыт.")

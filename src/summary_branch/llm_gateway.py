@@ -1,4 +1,4 @@
-"""Адаптер LLMClient к OpenAI-совместимому шлюзу команды. Только стандартная библиотека, без SDK."""
+"""Адаптер LLMClient к OpenAI-совместимому шлюзу. Только стандартная библиотека, без SDK."""
 from __future__ import annotations
 
 import json
@@ -8,7 +8,6 @@ import re
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Mapping, Optional
 from urllib.parse import urlparse
@@ -17,16 +16,18 @@ from pydantic import BaseModel, Field, SecretStr, field_validator
 
 log = logging.getLogger(__name__)
 
-ALLOWED_MODELS = frozenset({
-    "google/gemma-4-26b-a4b-it", "z-ai/glm-5.3-flash", "qwen/qwen3.6-35b-a3b",
-    "deepseek/deepseek-v4.1-flash", "qwen/qwen3-vl-30b-a3b-instruct", "moonshotai/kimi-k2.6",
-})
 PRIMARY_BASE_URL = "https://changellenge.up.railway.app/v1"
 FALLBACK_BASE_URL = "https://api.alfahack-gateway26.ru/v1"
 
-_MSK = timezone(timedelta(hours=3))
-_BUDGET_RESET_HOUR_MSK = 3
-_BUDGET_MARKER = "budget has been exceeded"
+# Маршруты по назначению вызова (`tier` = режим запроса). Первая модель основная, остальные — запасные.
+# banner: сначала самая дешёвая по входным токенам (баннеры считаются пачками, вход большой).
+# chat: сначала самая быстрая (пользователь ждёт ответ). Выбрано замером на шлюзе, перепроверять при смене шлюза.
+DEFAULT_ROUTES: dict[str, list[str]] = {
+    "banner": ["deepseek/deepseek-v4.1-flash", "google/gemma-4-26b-a4b-it", "qwen/qwen3.6-35b-a3b"],
+    "chat": ["qwen/qwen3.6-35b-a3b", "deepseek/deepseek-v4.1-flash"],
+}
+
+_FATAL_STATUSES = (401,)   # 403 шлюз отдаёт на недоступную ключу модель, смена модели помогает
 _THINK_BLOCK = re.compile(r"<think>.*?</think>", re.S)
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.I)
 
@@ -34,19 +35,20 @@ Transport = Callable[[str, dict[str, str], bytes, float], tuple[int, bytes]]
 
 
 class LLMGatewayError(Exception):
-    """Шлюз недоступен или отклонил запрос. Для ветки это сбой клиента: кластер пропускается."""
+    """Шлюз недоступен или отклонил запрос. Для ветки это сбой клиента: кластер пропускается.
 
+    `fatal=True`: смена модели не поможет (например, неверный ключ).
+    """
 
-class LLMBudgetExceeded(LLMGatewayError):
-    """Суточный бюджет ключа исчерпан (сброс в 3:00 МСК)."""
+    def __init__(self, message: str, fatal: bool = False) -> None:
+        super().__init__(message)
+        self.fatal = fatal
 
 
 class GatewaySettings(BaseModel):
     api_key: SecretStr
     base_urls: list[str] = Field(default_factory=lambda: [PRIMARY_BASE_URL, FALLBACK_BASE_URL], min_length=1)
-    # Стартовое соответствие уровней моделям; подбирается по реальным прогонам.
-    model_by_tier: dict[str, str] = Field(default_factory=lambda: {
-        "full": "deepseek/deepseek-v4.1-flash", "lite": "z-ai/glm-5.3-flash"})
+    routes: dict[str, list[str]] = Field(default_factory=lambda: {k: list(v) for k, v in DEFAULT_ROUTES.items()})
     timeout_s: float = Field(default=60.0, gt=0)
     max_retries: int = Field(default=1, ge=0)
     temperature: float = Field(default=0.2, ge=0, le=2)
@@ -54,30 +56,31 @@ class GatewaySettings(BaseModel):
     # Модели-«рассуждатели» иначе тратят весь max_tokens на скрытое reasoning и отдают пустой content (проверено на шлюзе).
     disable_reasoning: bool = True
 
-    @field_validator("model_by_tier")
+    @field_validator("routes")
     @classmethod
-    def _models_are_known(cls, value: dict[str, str]) -> dict[str, str]:
-        unknown = sorted(set(value.values()) - ALLOWED_MODELS)
-        if unknown:
-            raise ValueError(f"модели нет в списке шлюза: {unknown}")
+    def _routes_are_not_empty(cls, value: dict[str, list[str]]) -> dict[str, list[str]]:
+        empty = sorted(route for route, models in value.items() if not models)
+        if empty:
+            raise ValueError(f"у маршрутов нет моделей: {empty}")
         return value
 
     @classmethod
     def from_env(cls, env_file: str | Path = ".env", environ: Optional[Mapping[str, str]] = None) -> "GatewaySettings":
         """Читает `.env` и переменные окружения (окружение приоритетнее). Ключ: API_KEY.
 
-        Необязательные: LLM_BASE_URL (основной адрес), LLM_MODEL_FULL, LLM_MODEL_LITE.
+        Необязательные: LLM_BASE_URL (основной адрес), LLM_MODELS_BANNER и LLM_MODELS_CHAT
+        (модели через запятую, первая основная).
         """
         values = {**_read_env_file(Path(env_file)), **(os.environ if environ is None else environ)}
         if not values.get("API_KEY"):
-            raise LLMGatewayError("не найден API_KEY ни в окружении, ни в .env")
+            raise LLMGatewayError("не найден API_KEY ни в окружении, ни в .env", fatal=True)
         settings: dict = {"api_key": values["API_KEY"]}
         if values.get("LLM_BASE_URL"):
             settings["base_urls"] = [values["LLM_BASE_URL"], FALLBACK_BASE_URL]
-        models = {tier: values[name] for tier, name in (("full", "LLM_MODEL_FULL"), ("lite", "LLM_MODEL_LITE"))
-                  if values.get(name)}
-        if models:
-            settings["model_by_tier"] = {**cls.model_fields["model_by_tier"].default_factory(), **models}
+        routes = {route: [m.strip() for m in values[name].split(",") if m.strip()]
+                  for route, name in (("banner", "LLM_MODELS_BANNER"), ("chat", "LLM_MODELS_CHAT")) if values.get(name)}
+        if routes:
+            settings["routes"] = {**{k: list(v) for k, v in DEFAULT_ROUTES.items()}, **routes}
         return cls(**settings)
 
 
@@ -119,21 +122,17 @@ def parse_json_object(content: str) -> dict:
 
 
 class OpenAICompatibleLLMClient:
-    """Реализация LLMClient: tier -> модель, запасной адрес, повторы, остановка при исчерпании суточного бюджета."""
+    """Реализация LLMClient: маршрут по `tier`, запасные модели и адреса, повторы при временных сбоях."""
 
     def __init__(self, settings: GatewaySettings, transport: Transport = urllib_transport,
-                 sleep: Callable[[float], None] = time.sleep,
-                 clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)) -> None:
+                 sleep: Callable[[float], None] = time.sleep) -> None:
         self._settings = settings
         self._transport = transport
         self._sleep = sleep
-        self._clock = clock
-        self._blocked_until: Optional[datetime] = None
-        self._use_response_format = True
+        self._models_without_response_format: set[str] = set()
         self.calls = 0
         self.prompt_tokens = 0
         self.completion_tokens = 0
-        self.cost = 0.0   # сумма поля usage.cost из ответов шлюза (единицы задаёт шлюз)
 
     @classmethod
     def from_env(cls, env_file: str | Path = ".env") -> "OpenAICompatibleLLMClient":
@@ -141,11 +140,10 @@ class OpenAICompatibleLLMClient:
 
     def generate_json(self, prompt: str, schema: dict, *, tier: str, trace_id: str) -> dict:
         """schema передаётся в тексте промпта самим саммаризатором; шлюзу уходит только режим json_object."""
-        self._raise_if_budget_blocked()
-        model = self._settings.model_by_tier.get(tier)
-        if model is None:
-            raise LLMGatewayError(f"для tier={tier!r} не настроена модель")
-        payload = self._post(model, prompt, tier, trace_id)
+        models = self._settings.routes.get(tier)
+        if not models:
+            raise LLMGatewayError(f"для маршрута {tier!r} не настроены модели", fatal=True)
+        payload = self._post_with_model_failover(models, prompt, tier, trace_id)
         choice = payload["choices"][0]
         if choice.get("finish_reason") == "length":
             raise ValueError("ответ модели обрезан по max_tokens")
@@ -155,6 +153,18 @@ class OpenAICompatibleLLMClient:
         return parse_json_object(content)
 
     # ------------------------------------------------------------------ сеть
+    def _post_with_model_failover(self, models: list[str], prompt: str, tier: str, trace_id: str) -> dict:
+        last_error: Optional[LLMGatewayError] = None
+        for model in models:
+            try:
+                return self._post(model, prompt, tier, trace_id)
+            except LLMGatewayError as exc:
+                if exc.fatal:
+                    raise
+                last_error = exc
+                log.warning("модель недоступна, пробую следующую: trace_id=%s tier=%s model=%s", trace_id, tier, model)
+        raise last_error or LLMGatewayError("нет доступных моделей")
+
     def _post(self, model: str, prompt: str, tier: str, trace_id: str) -> dict:
         headers = {"Authorization": f"Bearer {self._settings.api_key.get_secret_value()}",
                    "Content-Type": "application/json"}
@@ -176,28 +186,25 @@ class OpenAICompatibleLLMClient:
                     self._account(payload, tier, model, host, latency_ms, trace_id)
                     return payload
                 text = raw.decode("utf-8", errors="replace")
-                if _BUDGET_MARKER in text.lower():
-                    self._block_until_reset()
-                    log.error("бюджет ключа исчерпан: trace_id=%s host=%s", trace_id, host)
-                    raise LLMBudgetExceeded("суточный бюджет исчерпан, сброс в 3:00 МСК")
-                if status == 400 and self._use_response_format and "response_format" in text:
-                    self._use_response_format = False
-                    log.warning("шлюз не поддерживает response_format, отключаю: trace_id=%s", trace_id)
+                if status == 400 and model not in self._models_without_response_format and "response_format" in text:
+                    self._models_without_response_format.add(model)
+                    log.warning("модель не поддерживает response_format, отключаю: trace_id=%s model=%s", trace_id, model)
                     return self._post(model, prompt, tier, trace_id)
                 if status == 429 or status >= 500:
                     log.warning("шлюз ответил %d: trace_id=%s host=%s attempt=%d", status, trace_id, host, attempt + 1)
                     self._backoff(attempt)
                     continue
-                log.error("шлюз отклонил запрос: trace_id=%s host=%s status=%d", trace_id, host, status)
-                raise LLMGatewayError(f"шлюз отклонил запрос: HTTP {status} {text[:200]}")
-        raise LLMGatewayError("все адреса шлюза недоступны")
+                log.error("шлюз отклонил запрос: trace_id=%s host=%s model=%s status=%d", trace_id, host, model, status)
+                raise LLMGatewayError(f"шлюз отклонил запрос: HTTP {status} {text[:200]}",
+                                      fatal=status in _FATAL_STATUSES)
+        raise LLMGatewayError(f"все адреса шлюза недоступны для модели {model}")
 
     def _body(self, model: str, prompt: str) -> bytes:
         body: dict = {"model": model, "messages": [{"role": "user", "content": prompt}],
                       "temperature": self._settings.temperature, "max_tokens": self._settings.max_tokens}
         if self._settings.disable_reasoning:
             body["reasoning"] = {"enabled": False}
-        if self._use_response_format:
+        if model not in self._models_without_response_format:
             body["response_format"] = {"type": "json_object"}
         return json.dumps(body, ensure_ascii=False).encode("utf-8")
 
@@ -210,18 +217,5 @@ class OpenAICompatibleLLMClient:
         self.calls += 1
         self.prompt_tokens += usage.get("prompt_tokens", 0)
         self.completion_tokens += usage.get("completion_tokens", 0)
-        self.cost += usage.get("cost") or 0.0
-        log.info("ответ шлюза: trace_id=%s tier=%s model=%s host=%s latency_ms=%d prompt_tokens=%s completion_tokens=%s cost=%s",
-                 trace_id, tier, model, host, latency_ms, usage.get("prompt_tokens"), usage.get("completion_tokens"),
-                 usage.get("cost"))
-
-    # ------------------------------------------------------------------ бюджет
-    def _block_until_reset(self) -> None:
-        now = self._clock().astimezone(_MSK)
-        reset = now.replace(hour=_BUDGET_RESET_HOUR_MSK, minute=0, second=0, microsecond=0)
-        self._blocked_until = reset if now < reset else reset + timedelta(days=1)
-
-    def _raise_if_budget_blocked(self) -> None:
-        if self._blocked_until is not None and self._clock() < self._blocked_until:
-            raise LLMBudgetExceeded(f"бюджет исчерпан до {self._blocked_until.isoformat()}, вызов не отправлен")
-        self._blocked_until = None
+        log.info("ответ шлюза: trace_id=%s tier=%s model=%s host=%s latency_ms=%d prompt_tokens=%s completion_tokens=%s",
+                 trace_id, tier, model, host, latency_ms, usage.get("prompt_tokens"), usage.get("completion_tokens"))
