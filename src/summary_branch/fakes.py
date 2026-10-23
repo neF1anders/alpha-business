@@ -58,7 +58,7 @@ class FakeLLMClient:
         key_sentence = next((s for s in sentences if re.search(r"\d", s)), sentences[0] if sentences else lead["title"])
         claims = [{"type": "fact", "text": key_sentence.rstrip("."), "evidence_ids": [lead["id"]]}]
         claims += [{"type": "bank", "text": b["claim"].rstrip("."), "evidence_ids": [b["id"]]} for b in banks[:1]]
-        claims.append({"type": "model", "text": "Эффект для компаний сегмента возможен в ближайшие недели",
+        claims.append({"type": "model", "text": "Нагрузка по кредитным продуктам сегмента может сохраниться",
                        "evidence_ids": [lead["id"]]})
         return {
             "headline": lead["title"][:60],
