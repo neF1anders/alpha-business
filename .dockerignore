@@ -1,0 +1,10 @@
+**
+!requirements.txt
+!ingestion/
+!ingestion/**
+!sql/
+!sql/**
+!tests/
+!tests/**
+**/__pycache__/
+**/*.pyc
