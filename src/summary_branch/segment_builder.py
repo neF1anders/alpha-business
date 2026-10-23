@@ -34,6 +34,7 @@ class SegmentBuilder:
             log.info("кэш сегмента: попадание trace_id=%s key=%s", req.trace_id, key)
             return cached
 
+        log.info("кэш сегмента: промах trace_id=%s key=%s", req.trace_id, key)
         draft = self._summarizer.summarize(req)
         claims, sources = self._binder.bind(draft, req)
         signals = self._content_scorer.score(req, draft, claims, sources)

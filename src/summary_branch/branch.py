@@ -84,10 +84,13 @@ class DefaultSummaryBranch:
         banner = self._composer.compose(seg, company, confidence)
         dto = self._publisher.to_dto(banner, seg)
         is_new = self._store.put(banner, dto)
+        log.info("баннер сохранён: trace_id=%s banner=%s company=%s new=%s", trace_id, banner.banner_id,
+                 company.company_id, is_new)
         is_urgent = (is_new and banner.severity == Severity.ATTENTION and banner.decision == Decision.SHOW_SUMMARY
                      and confidence.score >= self._config.urgent_min_score)
         if is_urgent:
             self._publisher.push(company.company_id, [dto])
+            log.info("срочный пуш: trace_id=%s banner=%s company=%s", trace_id, banner.banner_id, company.company_id)
         return banner
 
     # ------------------------------------------------------------------ chat

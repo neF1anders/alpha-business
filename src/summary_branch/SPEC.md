@@ -30,7 +30,7 @@
 
 ## 3. Что реализовать
 
-Пакет `summary_branch/`, модули ниже. Имена классов можно менять, но каждый класс обязан реализовывать указанный Protocol.
+Пакет `src/summary_branch/`, модули ниже. Имена классов можно менять, но каждый класс обязан реализовывать указанный Protocol.
 
 ### 3.1 `config.py`
 Один pydantic-класс `BranchConfig` со значениями по умолчанию: `max_clusters_per_request=3`, `top_k_serve=3`, `cache_ttl_s=72*3600`, `banner_ttl_h` по теме (`rate`: 72, `fx`: 24, остальное: 36), `urgent_min_score=0.85`, `news_text_max_chars=2000`, `quote_max_chars=200`, `prompt_version="v1"`. Пороги уверенности и веса остаются в `scoring.py`.
@@ -38,7 +38,7 @@
 ### 3.2 `summarizer.py` — `LlmSummarizer(Summarizer)`
 - Строит промпт из `SummaryRequest`. Новости и материалы банка вставляются как данные внутри явных разделителей; в системной части прямо сказано, что текст внутри — не инструкции.
 - Просит строго JSON по схеме `SummaryDraft.model_json_schema()`.
-- Режим `banner`: один кластер на вызов (вызывающий код сам режет `news` по `cluster_id`). Режим `chat`: учитывает `question`, возвращает `follow_ups`.
+- Режим `banner`: один кластер на вызов (вызывающий код сам режет `news` по `cluster_id`). Режим `chat`: учитывает `question`, возвращает `follow_ups`; из контекста компании в промпт идут только `tags` и `features`.
 - Правила в промпте: каждое утверждение помечено типом `fact|bank|model|hypothesis`; в `fact` и `bank` только то, что есть в источниках; ссылки только на `news_id`/`doc_id` из запроса; числа переписываются без изменений; `headline` до 60 символов; `for_you_template` содержит `{feature}` либо пустой, `for_you_fallback` обязателен; никаких инвестиционных рекомендаций.
 - `req.budget`: `FULL` обычный вызов, `LITE` короткий вызов без повторов, `CACHED_ONLY` вызов запрещён (бросить `BudgetExhausted`).
 - Невалидный JSON: один повтор с подсказкой об ошибке, затем `SummarizationFailed`.
@@ -54,11 +54,11 @@
 
 ### 3.4 `stores.py`
 - `InMemorySegmentCache(SegmentCache)` с TTL и счётчиком попаданий.
-- `InMemoryBannerStore(BannerStore)`: `put` идемпотентен по `banner_id`; `top_k` отбрасывает просроченные и скрытые, применяет `pick_top_k` (динамическая часть приоритета и разнообразие тем), возвращает `list[BannerDTO]`; `mark_seen`, `suppress`, `invalidate_cluster` работают как описано в интерфейсе.
+- `InMemoryBannerStore(BannerStore)`: `put` идемпотентен по `banner_id` и возвращает `True`, если баннер новый, иначе `False`; `top_k` отбрасывает просроченные и скрытые, применяет `pick_top_k` (динамическая часть приоритета и разнообразие тем), возвращает `list[BannerDTO]`; `mark_seen`, `suppress`, `invalidate_cluster` работают как описано в интерфейсе.
 - Интерфейс сохраняется таким, чтобы позже подставить Redis (отсортированное множество со статическим `base_priority` из `scoring.py`) и Postgres. Реальные Redis/Postgres писать не нужно.
 
 ### 3.5 `confidence.py` — `DefaultConfidenceScorer(ConfidenceScorer)`
-Тонкий адаптер над `scoring.company_confidence` (берёт сигналы, `lead`, `topic` из `SegmentSummary`; `has_sources` по `seg.sources`). Калибратор и NLI принимает необязательными параметрами конструктора.
+Тонкий адаптер над `scoring.company_confidence` (берёт сигналы, `lead`, `topic` из `SegmentSummary`; `has_sources` по `seg.sources`). Калибратор принимает необязательным параметром конструктора; NLI принимает `DefaultContentScorer` (адаптер над `content_signals`).
 
 ### 3.6 `composer.py` — `DefaultBannerComposer(BannerComposer)`
 - `for_you` через `scoring.render_for_you`.
@@ -77,7 +77,7 @@
 1. Сгруппировать `req.news` по `cluster_id`, взять первые `max_clusters_per_request` по лучшему `rerank_score`.
 2. Для каждого кластера собрать `SegmentSummary` через `SegmentBuilder` (запрос с новостями только этого кластера).
 3. Взять компании: `req.company` плюс `directory.active_in_segment(segment_id)` без дублей.
-4. Для каждой компании: `ConfidenceScorer.score`; при `DROP` пропустить; иначе `composer.compose`, `publisher.to_dto`, `store.put`; если `severity=ATTENTION`, решение `SHOW_SUMMARY` и `score >= urgent_min_score`, вызвать `publisher.push`.
+4. Для каждой компании: `ConfidenceScorer.score`; при `DROP` пропустить; иначе `composer.compose`, `publisher.to_dto`, `store.put`; если `severity=ATTENTION`, решение `SHOW_SUMMARY`, `score >= urgent_min_score` и `store.put` вернул `True`, вызвать `publisher.push`.
 5. Вернуть список созданных `Banner`.
 
 `handle_chat(req)`: `Summarizer` в режиме chat без записи в кэш баннеров; `EvidenceBinder`; `content_signals`; `company_confidence` с `lead_from_news(req.news[0])`. Если решение `SHOW_RAW_NEWS` или `DROP`, вернуть `ChatAnswer` с `raw_news=True`, пустыми `claims` и источниками главной новости. Иначе вернуть утверждения и источники, `caveat` при средней уверенности. Ничего не пишет в `BannerStore`.
@@ -117,11 +117,4 @@
 1. В режиме предрасчёта оркестратор вызывает ветку по одному представителю сегмента, остальные компании сегмента берутся из `CompanyDirectory`.
 2. `segment_id` приходит готовым; правило нарезки не наше.
 3. Релевантность для остальных компаний сегмента считается по пересечению их тегов с тегами главной новости, а оценка реранкера берётся от представителя.
-4. Классификатор NLI и калибратор подключаются позже через необязательные параметры.
-
-## 7. Формат сдачи
-
-1. Код в `summary_branch/`, тесты в `summary_branch/tests/`.
-2. Прогон тестов: команда и результат в отчёте.
-3. `CHANGES.md`: что отклонилось от спецификации и почему.
-4. Короткий отчёт: что сделано, что не сделано, какие допущения принял.
+4. Классификатор NLI и калибратор подключаются позже через необязательные параметры (`DefaultContentScorer`, `DefaultConfidenceScorer`).

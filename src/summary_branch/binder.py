@@ -1,6 +1,7 @@
 """S3. Детерминированная привязка доказательств: ссылки -> цитаты, чистка утверждений, сбор источников."""
 from __future__ import annotations
 
+import logging
 import re
 
 from .config import BranchConfig
@@ -8,6 +9,8 @@ from .models import (
     Claim, ClaimType, EvidenceRef, SourceKind, SourceRef, SummaryDraft, SummaryRequest,
 )
 from .scoring import _NUM, _numbers, _stems
+
+log = logging.getLogger(__name__)
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 _NON_WORD = re.compile(r"[^\w]+", re.UNICODE)
@@ -59,10 +62,12 @@ class DefaultEvidenceBinder:
 
         claims: list[Claim] = []
         seen_texts: dict[str, Claim] = {}
+        dropped = 0
         for draft_claim in draft.claims:
             evidence = self._build_evidence(draft_claim.text, draft_claim.evidence_ids,
                                             news_by_id, docs_by_id, limit)
             if draft_claim.type in _MUST_HAVE_EVIDENCE and not evidence:
+                dropped += 1
                 continue
             normalized = _normalize(draft_claim.text)
             twin = seen_texts.get(normalized)
@@ -74,6 +79,9 @@ class DefaultEvidenceBinder:
             seen_texts[normalized] = claim
             claims.append(claim)
 
+        if dropped:
+            log.warning("утверждения без опоры отброшены: trace_id=%s dropped=%d kept=%d",
+                        req.trace_id, dropped, len(claims))
         return claims, self._collect_sources(claims, news_by_id, docs_by_id)
 
     @staticmethod

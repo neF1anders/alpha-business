@@ -103,6 +103,19 @@ def test_broken_json_twice_raises_summarization_failed():
     assert llm.call_count == 2
 
 
+def test_gateway_failure_becomes_summarization_failed_without_retry():
+    class DownLLM:
+        calls = 0
+
+        def generate_json(self, prompt, schema, *, tier, trace_id):
+            DownLLM.calls += 1
+            raise TimeoutError("router timeout")
+
+    with pytest.raises(SummarizationFailed):
+        LlmSummarizer(DownLLM()).summarize(make_req())
+    assert DownLLM.calls == 1
+
+
 def test_schema_violation_counts_as_invalid():
     llm = FakeLLMClient(tamper=lambda d: {**d, "severity": "panic"})
     with pytest.raises(SummarizationFailed):

@@ -125,6 +125,17 @@ def test_urgent_banner_is_pushed_only_for_attention_with_high_score():
     assert pushed == []
 
 
+def test_top_banners_respects_top_k_serve_and_injected_store():
+    from summary_branch.stores import InMemoryBannerStore, InMemorySegmentCache
+    store, cache = InMemoryBannerStore(), InMemorySegmentCache()
+    news = [make_news(f"n{i}", f"c{i}", rerank_score=0.9) for i in range(3)]
+    rt = build_branch(FakeLLMClient(), StaticDirectory(COMPANIES), BranchConfig(top_k_serve=2, max_clusters_per_request=3),
+                      store=store, cache=cache)
+    rt.branch.handle_banner(make_req(news=news))
+    assert rt.store is store and rt.cache is cache
+    assert len(rt.top_banners("co1")) == 2
+
+
 def test_invalidate_cluster_after_publication():
     _, rt = runtime()
     rt.branch.handle_banner(make_req())

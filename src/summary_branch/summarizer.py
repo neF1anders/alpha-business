@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 
 from .config import BranchConfig
 from .errors import BudgetExhausted, SummarizationFailed
@@ -111,11 +112,20 @@ class LlmSummarizer:
             current = prompt if not last_error else (
                 f"{prompt}\n\nПредыдущий ответ был невалиден: {_defang(last_error)[:300]}. "
                 "Верни строго JSON по схеме.")
+            started = time.monotonic()
             try:
                 raw = self._llm.generate_json(current, schema, tier=req.budget.value, trace_id=req.trace_id)
-                return SummaryDraft.model_validate(raw)
+                draft = SummaryDraft.model_validate(raw)
             except ValueError as exc:   # JSONDecodeError и ValidationError наследуют ValueError
                 last_error = str(exc)
-                log.warning("невалидный ответ модели: trace_id=%s attempt=%d error=%s",
-                            req.trace_id, attempt + 1, type(exc).__name__)
+                log.warning("невалидный ответ модели: trace_id=%s tier=%s attempt=%d error=%s",
+                            req.trace_id, req.budget.value, attempt + 1, type(exc).__name__)
+                continue
+            except Exception as exc:    # сбой шлюза: ретраи и таймауты остаются за роутером
+                log.error("сбой LLM-клиента: trace_id=%s tier=%s error=%s", req.trace_id, req.budget.value,
+                          type(exc).__name__)
+                raise SummarizationFailed(f"LLM-клиент недоступен: {type(exc).__name__}") from exc
+            log.info("вызов модели: trace_id=%s tier=%s attempt=%d latency_ms=%d claims=%d", req.trace_id,
+                     req.budget.value, attempt + 1, (time.monotonic() - started) * 1000, len(draft.claims))
+            return draft
         raise SummarizationFailed(f"модель не вернула валидный JSON за {attempts} попыт.")
