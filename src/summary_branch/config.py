@@ -1,0 +1,26 @@
+"""Настройки ветки. Пороги уверенности и веса остаются в scoring.py."""
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class BranchConfig(BaseModel):
+    max_clusters_per_request: int = Field(default=3, ge=1)
+    top_k_serve: int = Field(default=3, ge=1)
+    cache_ttl_s: int = Field(default=72 * 3600, gt=0)
+    banner_ttl_h: dict[str, int] = Field(default_factory=lambda: {"rate": 72, "fx": 24})
+    banner_ttl_default_h: int = Field(default=36, gt=0)
+    urgent_min_score: float = Field(default=0.85, ge=0, le=1)
+    news_text_max_chars: int = Field(default=2000, gt=0)
+    quote_max_chars: int = Field(default=200, gt=0)
+    max_sources: int = Field(default=3, gt=0)
+    prompt_version: str = "v1"
+    topic_labels_ru: dict[str, str] = Field(default_factory=lambda: {
+        "rate": "ставка", "fx": "курс", "labor": "рынок труда", "demand": "спрос",
+    })
+    severity_labels_ru: dict[str, str] = Field(default_factory=lambda: {
+        "attention": "Внимание", "watch": "Наблюдение", "opportunity": "Возможность",
+    })
+
+    def ttl_hours(self, topic: str) -> int:
+        return self.banner_ttl_h.get(topic, self.banner_ttl_default_h)
