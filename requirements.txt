@@ -1,0 +1,2 @@
+psycopg[binary]==3.3.6
+PyMuPDF==1.28.2

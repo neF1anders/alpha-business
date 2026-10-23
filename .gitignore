@@ -1,1 +1,22 @@
-diagrams/
+# Generated diagrams
+/docs/diagrams/
+/docs/diagrams-full/
+
+# Local Python environment and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local credentials; keep the shared template
+.env
+.env.*
+!.env.example
+
+# Reproducible outputs; raw CSV/PDF and reports-metadata.json belong in Git
+/data/processed/
+/data/cache/
+
+# Local database backups
+*.dump
+*.backup
