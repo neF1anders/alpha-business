@@ -49,6 +49,13 @@ def test_sources_order_primary_bank_media_and_limit_three():
     assert sources[1].title == "Макрообзор, стр. 4"
 
 
+def test_bank_material_without_url_is_rejected_by_contract():
+    import pytest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        make_bank_material(url=None)
+
+
 def test_quote_is_within_limit_and_keeps_claim_number():
     long_text = "Вводное предложение без цифр. " + "Слово " * 60 + "ставка составила 14,0% годовых и осталась прежней."
     req = make_req(news=[make_news(title="Решение регулятора", text=long_text)])

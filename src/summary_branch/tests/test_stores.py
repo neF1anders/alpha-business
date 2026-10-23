@@ -67,6 +67,16 @@ def test_put_is_idempotent_and_keeps_state():
     assert store.top_k("co1", 3) == []
 
 
+def test_put_returns_true_only_for_new_banner_id():
+    store = InMemoryBannerStore()
+    b = banner("a")
+    assert store.put(b, dto(b)) is True
+    assert store.put(b, dto(b)) is False
+    assert store.put(banner("a", company="co2"), dto(b)) is True      # у другой компании баннер новый
+    store.invalidate_cluster("c1", "новое событие")
+    assert store.put(b, dto(b)) is True                                # после снятия снова новый
+
+
 def test_top_k_is_isolated_per_company():
     store = InMemoryBannerStore()
     put(store, banner("a", company="co1"), banner("b", company="co2"))

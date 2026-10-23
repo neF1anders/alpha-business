@@ -106,7 +106,7 @@ class DefaultEvidenceBinder:
             else:
                 doc = docs_by_id[ref_id]
                 title = f"{doc.title}, стр. {doc.page}" if doc.page else doc.title
-                add(SourceRef(kind=SourceKind.BANK, title=title, url=doc.url or ""))
+                add(SourceRef(kind=SourceKind.BANK, title=title, url=doc.url))
 
         ordered = sorted(sources.values(), key=lambda s: _SOURCE_ORDER[s.kind])
         return ordered[: self._config.max_sources]

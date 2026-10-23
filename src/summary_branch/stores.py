@@ -44,10 +44,13 @@ class InMemoryBannerStore:
         self._seen: dict[str, set[str]] = {}
         self._suppressed: dict[str, dict[str, str]] = {}
 
-    def put(self, banner: Banner, dto: BannerDTO) -> None:
+    def put(self, banner: Banner, dto: BannerDTO) -> bool:
         """Идемпотентно по banner_id; состояния seen/suppressed повторная запись не сбрасывает."""
-        self._banners.setdefault(banner.company_id, {})[banner.banner_id] = banner
+        company_banners = self._banners.setdefault(banner.company_id, {})
+        is_new = banner.banner_id not in company_banners
+        company_banners[banner.banner_id] = banner
         self._dtos[banner.banner_id] = dto
+        return is_new
 
     def top_k(self, company_id: str, k: int, now: Optional[datetime] = None) -> list[BannerDTO]:
         now = now or utcnow()

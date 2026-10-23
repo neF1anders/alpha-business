@@ -83,8 +83,8 @@ class DefaultSummaryBranch:
             return None
         banner = self._composer.compose(seg, company, confidence)
         dto = self._publisher.to_dto(banner, seg)
-        self._store.put(banner, dto)
-        is_urgent = (banner.severity == Severity.ATTENTION and banner.decision == Decision.SHOW_SUMMARY
+        is_new = self._store.put(banner, dto)
+        is_urgent = (is_new and banner.severity == Severity.ATTENTION and banner.decision == Decision.SHOW_SUMMARY
                      and confidence.score >= self._config.urgent_min_score)
         if is_urgent:
             self._publisher.push(company.company_id, [dto])

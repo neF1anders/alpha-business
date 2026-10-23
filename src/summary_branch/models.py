@@ -85,7 +85,7 @@ class BankMaterialRef(BaseModel):
     title: str
     page: Optional[int] = None
     claim_text: str
-    url: Optional[str] = None
+    url: str
 
 
 class SummaryRequest(BaseModel):

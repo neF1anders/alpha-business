@@ -116,6 +116,9 @@ def test_urgent_banner_is_pushed_only_for_attention_with_high_score():
     assert sorted(pushed) == ["co1", "co2"]
 
     pushed.clear()
+    rt.branch.handle_banner(make_req())                              # повторный прогон не пушит второй раз
+    assert pushed == []
+
     _, rt_low = runtime(push_handler=lambda cid, dtos: pushed.append(cid))
     rt_low.branch.handle_banner(make_req(news=[make_news(rerank_score=0.2)],
                                          company=make_company(tags=["agro"])))
