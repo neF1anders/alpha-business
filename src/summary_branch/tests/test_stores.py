@@ -101,7 +101,7 @@ def test_segment_cache_ttl_and_hit_counter():
     assert cache.get(k) is None
     item = _summary(k)
     cache.put(item, ttl_s=60)
-    assert cache.get(k) is item
+    assert cache.get(k) == item
     now[0] += timedelta(seconds=61)
     assert cache.get(k) is None
     assert (cache.hits, cache.misses) == (1, 2)
@@ -114,3 +114,62 @@ def _summary(k):
     lead = LeadRef(cluster_id=k.cluster_id, published_at=utcnow(), rerank_score=0.5)
     return SegmentSummary(key=k, model_id="m", headline="h", for_you_template="", for_you_fallback="f", topic="rate",
                           severity=Severity.WATCH, claims=[], sources=[], lead=lead, signals=signals)
+
+
+def test_put_returns_false_for_suppressed_banner_so_it_is_not_pushed():
+    store = InMemoryBannerStore()
+    b = banner("a")
+    put(store, b)
+    store.suppress("co1", "a", "не про меня")
+    store.invalidate_cluster("c1", "новое событие")
+    assert store.put(b, dto(b)) is False        # тот же banner_id после обновления кластера остаётся скрытым
+    assert store.top_k("co1", 3) == []
+
+
+def test_invalidate_cluster_resets_seen_state():
+    store = InMemoryBannerStore()
+    put(store, banner("a", "rate", confidence=0.95), banner("b", "labor", confidence=0.9))
+    store.mark_seen("co1", "a")
+    assert ids(store.top_k("co1", 1)) == ["b"]
+    store.invalidate_cluster("c1", "новое событие")
+    put(store, banner("a", "rate", confidence=0.95))
+    assert ids(store.top_k("co1", 1)) == ["a"]  # свежий баннер не наследует штраф за «просмотрено»
+
+
+def test_returned_objects_are_copies():
+    store = InMemoryBannerStore()
+    put(store, banner("a"))
+    store.top_k("co1", 1)[0].headline = "испорчено"
+    assert store.top_k("co1", 1)[0].headline == "a"
+
+    cache = InMemorySegmentCache()
+    k = key()
+    cache.put(_summary(k), ttl_s=60)
+    cache.get(k).headline = "испорчено"
+    assert cache.get(k).headline == "h"
+
+
+def test_expired_banners_are_purged_on_put():
+    store = InMemoryBannerStore()
+    put(store, banner("old", expires_in_h=-1, topic="fx"))
+    put(store, banner("fresh"))
+    assert "old" not in store._dtos and "old" not in store._banners["co1"]
+
+
+def test_concurrent_access_does_not_break_store():
+    from concurrent.futures import ThreadPoolExecutor
+    store = InMemoryBannerStore()
+
+    def worker(i):
+        for j in range(200):
+            b = banner(f"b{i}-{j % 20}", topic=f"t{j % 5}", cluster=f"c{j % 7}")
+            store.put(b, dto(b))
+            store.top_k("co1", 3)
+            store.mark_seen("co1", b.banner_id)
+            if j % 25 == 0:
+                store.invalidate_cluster(f"c{j % 7}", "тест")
+
+    with ThreadPoolExecutor(8) as pool:
+        for future in [pool.submit(worker, i) for i in range(8)]:
+            future.result()
+    assert len(store.top_k("co1", 3)) <= 3

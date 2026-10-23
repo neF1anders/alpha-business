@@ -1,7 +1,9 @@
 """Демо ветки: два сегмента, три компании, повторный прогон идёт через кэш без вызовов LLM.
 
-Запуск: uv run python scripts/demo_summary_branch.py
+Запуск: uv run python scripts/demo_summary_branch.py          (заглушка LLM, без сети)
+        uv run python scripts/demo_summary_branch.py --live   (реальный шлюз, ключ из .env, тратит бюджет)
 """
+import logging
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -10,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from summary_branch.bootstrap import build_branch  # noqa: E402
 from summary_branch.fakes import FakeLLMClient, StaticDirectory  # noqa: E402
+from summary_branch.llm_gateway import OpenAICompatibleLLMClient  # noqa: E402
 from summary_branch.models import (  # noqa: E402
     BankMaterialRef, CompanyContext, Mode, RankedNewsItem, SourceKind, SummaryRequest, utcnow,
 )
@@ -51,15 +54,22 @@ REQUESTS = [
 ]
 
 
+def llm_calls(llm) -> int:
+    return llm.calls if isinstance(llm, OpenAICompatibleLLMClient) else llm.call_count
+
+
 def main() -> None:
-    llm = FakeLLMClient()
+    live = "--live" in sys.argv
+    if live:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    llm = OpenAICompatibleLLMClient.from_env() if live else FakeLLMClient()
     runtime = build_branch(llm, StaticDirectory(COMPANIES), push_handler=lambda cid, dtos: print(
         f"  [SSE push] {cid}: {dtos[0].headline}"))
 
     print("=== Прогон 1 ===")
     for request in REQUESTS:
         runtime.branch.handle_banner(request)
-    print(f"Вызовов LLM: {llm.call_count}")
+    print(f"Вызовов LLM: {llm_calls(llm)}")
 
     for company in COMPANIES:
         print(f"\nТоп-3 для {company.company_id} ({company.segment_id}):")
@@ -67,11 +77,13 @@ def main() -> None:
             flag = " [проверьте источник]" if dto.caveat else " [только новость]" if dto.raw_news else ""
             print(f"  {dto.label}: {dto.headline}{flag}\n    для вас: {dto.for_you or '-'}")
 
-    calls_before = llm.call_count
+    calls_before = llm_calls(llm)
     print("\n=== Прогон 2 (те же данные) ===")
     for request in REQUESTS:
         runtime.branch.handle_banner(request)
-    print(f"Новых вызовов LLM: {llm.call_count - calls_before}; попаданий в кэш: {runtime.cache.hits}")
+    print(f"Новых вызовов LLM: {llm_calls(llm) - calls_before}; попаданий в кэш: {runtime.cache.hits}")
+    if live:
+        print(f"Токены: prompt={llm.prompt_tokens} completion={llm.completion_tokens} cost={llm.cost:.3f}")
 
 
 if __name__ == "__main__":
