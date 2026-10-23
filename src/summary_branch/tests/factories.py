@@ -36,3 +36,31 @@ def make_req(**kw) -> SummaryRequest:
     base = dict(trace_id="t1", mode=Mode.BANNER, company=make_company(), news=[make_news()])
     base.update(kw)
     return SummaryRequest(**base)
+
+
+def make_draft(claims=None, **kw):
+    from summary_branch.models import ClaimType, DraftClaim, SummaryDraft
+    base = dict(headline="Ставка остаётся 14%", for_you_template="У вас {feature}: нагрузка не снизится",
+                for_you_fallback="Нагрузка по кредитам не снизится", topic="rate", severity="attention",
+                claims=claims if claims is not None else [
+                    DraftClaim(type=ClaimType.FACT, text="Банк России сохранил ключевую ставку на уровне 14%",
+                               evidence_ids=["n1"]),
+                    DraftClaim(type=ClaimType.MODEL, text="Нагрузка по кредитам не снизится", evidence_ids=["n1"]),
+                ])
+    base.update(kw)
+    return SummaryDraft(**base)
+
+
+def make_segment(req, draft=None):
+    """Сегментное саммари как его собрал бы SegmentBuilder (без кэша и LLM)."""
+    from summary_branch.binder import DefaultEvidenceBinder
+    from summary_branch.confidence import DefaultContentScorer
+    from summary_branch.models import ContentKey, SegmentSummary
+    from summary_branch.scoring import lead_from_news
+    draft = draft or make_draft()
+    claims, sources = DefaultEvidenceBinder().bind(draft, req)
+    signals = DefaultContentScorer().score(req, draft, claims, sources)
+    key = ContentKey(cluster_id=req.news[0].cluster_id, segment_id=req.company.segment_id, prompt_version="v1")
+    return SegmentSummary(key=key, model_id="test", headline=draft.headline, for_you_template=draft.for_you_template,
+                          for_you_fallback=draft.for_you_fallback, topic=draft.topic, severity=draft.severity,
+                          claims=claims, sources=sources, lead=lead_from_news(req.news[0]), signals=signals)
