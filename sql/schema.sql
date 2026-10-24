@@ -77,9 +77,29 @@ CREATE TABLE IF NOT EXISTS insights.document_chunks (
     UNIQUE (document_id,page_number,chunk_index)
 );
 CREATE INDEX IF NOT EXISTS chunks_search ON insights.document_chunks USING gin(search_vector);
-CREATE VIEW insights.rag_chunks AS
+-- Additive migration: safe for databases populated by the initial PDF loader.
+ALTER TABLE insights.documents ADD COLUMN IF NOT EXISTS source_type text NOT NULL DEFAULT 'pdf';
+ALTER TABLE insights.documents ADD COLUMN IF NOT EXISTS source_url text;
+ALTER TABLE insights.documents ADD COLUMN IF NOT EXISTS publisher text;
+ALTER TABLE insights.documents ADD COLUMN IF NOT EXISTS external_id text;
+ALTER TABLE insights.documents ADD COLUMN IF NOT EXISTS published_at_timestamp timestamptz;
+ALTER TABLE insights.documents ADD COLUMN IF NOT EXISTS source_metadata jsonb NOT NULL DEFAULT '{}';
+ALTER TABLE insights.document_chunks ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT '{}';
+ALTER TABLE insights.document_chunks ADD COLUMN IF NOT EXISTS key_rate boolean NOT NULL DEFAULT false;
+ALTER TABLE insights.document_chunks ADD COLUMN IF NOT EXISTS fx boolean NOT NULL DEFAULT false;
+ALTER TABLE insights.document_chunks ADD COLUMN IF NOT EXISTS commodities boolean NOT NULL DEFAULT false;
+ALTER TABLE insights.document_chunks ADD COLUMN IF NOT EXISTS consumer_demand boolean NOT NULL DEFAULT false;
+ALTER TABLE insights.document_chunks ADD COLUMN IF NOT EXISTS construction_market boolean NOT NULL DEFAULT false;
+ALTER TABLE insights.document_chunks ADD COLUMN IF NOT EXISTS tagging_version text;
+ALTER TABLE insights.document_chunks ADD COLUMN IF NOT EXISTS tag_metadata jsonb NOT NULL DEFAULT '{}';
+CREATE INDEX IF NOT EXISTS chunks_tags ON insights.document_chunks USING gin(tags);
+CREATE INDEX IF NOT EXISTS documents_external_id ON insights.documents(external_id);
+CREATE OR REPLACE VIEW insights.rag_chunks AS
 SELECT c.chunk_id,c.document_id,d.title,d.source_file,d.published_at,d.date_source,
-       c.page_number,c.text,c.start_char,c.end_char,p.method,p.confidence,c.search_vector
+       c.page_number,c.text,c.start_char,c.end_char,p.method,p.confidence,c.search_vector,
+       d.source_type,d.source_url,d.publisher,d.published_at_timestamp,
+       c.tags,c.key_rate,c.fx,c.commodities,c.consumer_demand,c.construction_market,
+       c.tagging_version,c.tag_metadata
 FROM insights.document_chunks c
 JOIN insights.documents d USING(document_id)
 JOIN insights.document_pages p USING(document_id,page_number)
