@@ -2,8 +2,9 @@
  * Альфа Инсайты — C4 (Structurizr DSL)
  * Уровни: Context -> Container -> Component (Ingestion, Insight Service) + 3 динамических сценария.
  *
- * Допущение: «Jev» из задачи прочитан как LLM-judge (оценка уверенности). Компонент называется
- * confidenceJudge; если имелось в виду другое — переименуйте и поправьте описание.
+ * Оркестратор только просит у ветки саммари баннеры или ответ чата и отдаёт их клиенту. Проверку качества
+ * (компонент confidenceValidator, без LLM) и повтор генерации делает сама ветка; готовый баннер отдаётся
+ * сразу из локального хранилища (bannerStore).
  *
  * Компиляция:
  *   structurizr-cli validate -workspace workspace.dsl
@@ -64,7 +65,8 @@ workspace "Альфа Инсайты" "Ассистент-суммаризато
                 cache = component "Сегментный кэш" "Ключ (кластер новости, сегмент компании); тонкая персонализация поверх" "Redis"
                 summarizer = component "Саммаризатор и интерпретатор" "Что произошло, почему важно этой компании, последствия, что сделать; опора на материалы банка" "LLM"
                 claimBuilder = component "Сборщик claims и ссылок" "Разбивает на утверждения: факт / позиция банка / вывод модели / гипотеза; привязывает источники и первоисточник" "Python + JSON schema"
-                confidenceJudge = component "Оценка уверенности (LLM-judge)" "Проверяет полноту, непротиворечивость, обоснованность; выдаёт уровень уверенности и причину" "GLM-5.3-Flash"
+                confidenceValidator = component "Валидатор уверенности" "Числа из источника, обоснованность, качество источника, свежесть; без LLM; выдаёт оценку и причины" "Python"
+                bannerStore = component "Хранилище баннеров" "Локальное: баннеры по компаниям; готовый валидный баннер отдаётся без генерации" "in-memory"
                 llmRouter = component "LLM-роутер и бюджет" "Каскад моделей, лимит токенов и ₽, деградация при исчерпании" "Python"
                 trace = component "Трасса и журнал" "Шаги агента, вызовы инструментов, промежуточные результаты, trace-id" "Python"
                 feedback = component "Обратная связь и метрики" "Полезно / не про меня / неточно; показы; метрики качества для консоли" "Python"
@@ -95,7 +97,7 @@ workspace "Альфа Инсайты" "Ассистент-суммаризато
         ingestion -> llmGateway "Разметка и чтение графиков" "HTTPS"
         insightSvc -> db "Читает и пишет"
         insightSvc -> queue "Ночной предрасчёт, задачи"
-        insightSvc -> llmGateway "Саммари, судья" "HTTPS"
+        insightSvc -> llmGateway "Саммари" "HTTPS"
         insightSvc -> crm "Заявка, звонок, сообщение" "API"
         bankData -> insightSvc "Профили, связи, платежи"
 
@@ -137,10 +139,12 @@ workspace "Альфа Инсайты" "Ассистент-суммаризато
         summarizer -> llmRouter "Запрос к модели"
         llmRouter -> llmGateway "Выбранная модель"
         summarizer -> claimBuilder "Черновик саммари"
-        claimBuilder -> confidenceJudge "Claims + источники"
-        confidenceJudge -> llmRouter "Запрос к судье"
-        confidenceJudge -> orchestrator "Уверенность и причины: высокая → резюме; низкая → сама новость или повторный поиск"
-        orchestrator -> api "Саммари, claims, ссылки, уверенность"
+        claimBuilder -> confidenceValidator "Claims + источники"
+        confidenceValidator -> summarizer "Невалидно: повтор генерации"
+        confidenceValidator -> bannerStore "Валидно (или лучшее после повторов): сохранение"
+        summarizer -> orchestrator "Баннеры или ответ"
+        orchestrator -> bannerStore "Есть готовый баннер?"
+        orchestrator -> api "Баннеры или ответ, claims, ссылки"
         orchestrator -> trace "Шаги плана"
         summarizer -> trace "Промпты и ответы"
         graph -> db "Читает связи"
@@ -203,8 +207,9 @@ workspace "Альфа Инсайты" "Ассистент-суммаризато
             ranker -> orchestrator "Пул top-K"
             orchestrator -> summarizer "Пул + профиль + claims банка"
             summarizer -> claimBuilder "Черновик саммари"
-            claimBuilder -> confidenceJudge "Claims + источники"
-            confidenceJudge -> orchestrator "Уверенность"
+            claimBuilder -> confidenceValidator "Claims + источники"
+            confidenceValidator -> summarizer "Невалидно: повтор генерации"
+            summarizer -> orchestrator "Ответ"
             orchestrator -> api "Саммари + ссылки или сама новость"
             autolayout lr
         }
