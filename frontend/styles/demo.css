@@ -1,0 +1,91 @@
+/* Demo controls for mock mode; not part of the product UI. */
+.demo {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  font-size: 12px;
+}
+
+.demo__toggle {
+  padding: 6px 14px;
+  border: 1px dashed #b9bbc2;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+
+.demo__popover {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 280px;
+  padding: 14px;
+  border: 1px solid var(--line-default);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px) scale(0.98);
+  transform-origin: bottom center;
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out),
+    visibility 0s linear var(--dur);
+}
+
+.demo.is-open .demo__popover {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+
+.demo__heading {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.demo__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.demo__divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--line-default);
+}
+
+.demo__button {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--text-primary);
+  color: var(--text-inverse);
+  font-weight: 500;
+}
+
+.demo__button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.demo__button--ghost {
+  background: var(--bg-chip);
+  color: var(--text-primary);
+}
