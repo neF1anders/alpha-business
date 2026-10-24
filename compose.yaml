@@ -30,5 +30,13 @@ services:
       db:
         condition: service_healthy
     profiles: [tools]
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.orchestrator
+    ports:
+      - "127.0.0.1:${ORCHESTRATOR_PORT:-8000}:8000"
+    volumes:
+      - ./data/processed:/app/data/processed:ro
 volumes:
   insights-db:

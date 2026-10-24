@@ -1,5 +1,7 @@
 **
 !requirements.txt
+!orchestrator/
+!orchestrator/**
 !ingestion/
 !ingestion/**
 !sql/
