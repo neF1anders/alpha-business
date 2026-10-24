@@ -21,11 +21,18 @@ from .models import (
 SOURCE_PRIOR = {SourceKind.PRIMARY: 1.0, SourceKind.BANK: 0.9, SourceKind.MEDIA: 0.6}
 WEIGHTS = {"relevance": 0.30, "grounding": 0.35, "source_quality": 0.15, "freshness": 0.10, "claim_mix": 0.10}
 HIGH, MEDIUM = 0.75, 0.55
+STRICT_NUMERIC = True          # любое число проверяемого утверждения должно встречаться в источнике
+NUMERIC_MISS_GROUNDING = 0.4   # прежнее правило (при STRICT_NUMERIC=False): число и обоснованность ниже порога
+MIN_CLAIM_LEX = 0.5            # доля основ слов проверяемого утверждения, найденных в источнике, не ниже (0 выключает)
+FAITHFUL_GROUNDING = 0.6       # утверждение считается подтверждённым источником (для SQS)
+NUMERIC_MISS_CAP = 0.5         # потолок оценки при выдуманном числе или слабо подтверждённом утверждении
+RELEVANCE_FLOOR, RELEVANCE_CAP = 0.25, 0.45   # ниже порога релевантности оценка не выше потолка
 HALF_LIFE_H = {"rate": 72.0, "fx": 24.0, "default": 48.0}
 SEVERITY_WEIGHT = {"attention": 1.0, "watch": 0.7, "opportunity": 0.8}
 HEADLINE_MAX, FOR_YOU_MAX = 60, 140
 
 _NUM = re.compile(r"\d+(?:[.,]\d+)?")
+_NUMBER_WORDS = {"полпроцента": "0.5", "полтора": "1.5", "полторы": "1.5"}   # пересказ словами не должен выглядеть выдумкой
 _WORD = re.compile(r"[а-яёa-z]{4,}", re.I)
 
 
@@ -39,11 +46,19 @@ def _numbers(text: str) -> set[str]:
     for m in _NUM.findall(text):
         v = m.replace(",", ".")
         out.add(v.rstrip("0").rstrip(".") if "." in v else v)
+    lowered = text.lower()
+    out.update(value for word, value in _NUMBER_WORDS.items() if word in lowered)
     return out
 
 
 def _stems(text: str) -> set[str]:
     return {w.lower()[:5] for w in _WORD.findall(text)}
+
+
+def _lexical_overlap(claim_text: str, evidence_text: str) -> float:
+    """Доля основ слов утверждения, найденных в источнике; у утверждения без слов 1.0."""
+    claim_stems = _stems(claim_text)
+    return len(claim_stems & _stems(evidence_text)) / len(claim_stems) if claim_stems else 1.0
 
 
 def lead_from_news(n: RankedNewsItem) -> LeadRef:
@@ -66,8 +81,7 @@ def claim_grounding(claim: Claim, evidence_text: str,
     """0.6 x доля чисел утверждения, найденных в источнике + 0.4 x доля основ слов. NLI усредняется, если задан."""
     nums = _numbers(claim.text)
     num_score = 1.0 if not nums else len(nums & _numbers(evidence_text)) / len(nums)
-    cs, es = _stems(claim.text), _stems(evidence_text)
-    lex_score = 1.0 if not cs else len(cs & es) / len(cs)
+    lex_score = _lexical_overlap(claim.text, evidence_text)
     base = 0.6 * num_score + 0.4 * lex_score
     if nli is not None:
         base = 0.5 * base + 0.5 * _clip(nli(evidence_text, claim.text))
@@ -107,7 +121,13 @@ def content_signals(req: SummaryRequest, draft: SummaryDraft, claims: list[Claim
     for c in checked:
         c.grounding = claim_grounding(c, _evidence_text(c, req), nli)
     grounding = sum(c.grounding or 0.0 for c in checked) / len(checked) if checked else 0.0
-    numeric_miss = any(_numbers(c.text) and (c.grounding or 0) < 0.4 for c in checked)
+    evidence = {id(c): _evidence_text(c, req) for c in checked}
+    if STRICT_NUMERIC:
+        numeric_miss = any(not _numbers(c.text) <= _numbers(evidence[id(c)]) for c in checked)
+    else:
+        numeric_miss = any(_numbers(c.text) and (c.grounding or 0) < NUMERIC_MISS_GROUNDING for c in checked)
+    unsupported_claim = bool(MIN_CLAIM_LEX) and any(
+        _lexical_overlap(c.text, evidence[id(c)]) < MIN_CLAIM_LEX for c in checked)
 
     source_quality = max((SOURCE_PRIOR[s.kind] for s in sources), default=0.0)
 
@@ -116,7 +136,7 @@ def content_signals(req: SummaryRequest, draft: SummaryDraft, claims: list[Claim
     unsupported = sum(1 for c in soft if not c.evidence)
     claim_mix = _clip(1.0 - 0.6 * unsupported / n - 0.2 * len(soft) / n)
 
-    faith = (sum(1 for c in checked if (c.grounding or 0) >= 0.6) / len(checked)) if checked else 0.0
+    faith = (sum(1 for c in checked if (c.grounding or 0) >= FAITHFUL_GROUNDING) / len(checked)) if checked else 0.0
     keys = _key_numbers(req.news[0])
     summary_text = " ".join([draft.headline] + [c.text for c in claims])
     coverage = 1.0 if not keys else len(keys & _numbers(summary_text)) / len(keys)
@@ -128,7 +148,7 @@ def content_signals(req: SummaryRequest, draft: SummaryDraft, claims: list[Claim
     sqs = (0.45 * faith + 0.25 * coverage + 0.15 * spec + 0.15 * brev) if structure_ok else 0.0
 
     return ContentSignals(grounding=round(grounding, 3), source_quality=source_quality, claim_mix=round(claim_mix, 3),
-                          numeric_miss=numeric_miss, faithfulness=round(faith, 3), coverage=round(coverage, 3),
+                          numeric_miss=numeric_miss, unsupported_claim=unsupported_claim, faithfulness=round(faith, 3), coverage=round(coverage, 3),
                           specificity=spec, brevity=round(brev, 3), structure_ok=structure_ok,
                           sqs=round(_clip(sqs), 3))
 
@@ -152,13 +172,16 @@ def company_confidence(signals: ContentSignals, lead: LeadRef, topic: str, compa
     if signals.source_quality < 0.9:
         reasons.append("нет первоисточника или материалов банка")
     if signals.numeric_miss:
-        score = min(score, 0.5)
+        score = min(score, NUMERIC_MISS_CAP)
         reasons.append("число из утверждения не найдено в источнике")
+    if signals.unsupported_claim:
+        score = min(score, NUMERIC_MISS_CAP)
+        reasons.append("утверждение слабо подтверждено текстом источника")
     if not has_sources:
         score = 0.0
         reasons.append("нет ни одного источника")
-    if relevance < 0.25:
-        score = min(score, 0.45)
+    if relevance < RELEVANCE_FLOOR:
+        score = min(score, RELEVANCE_CAP)
         reasons.append("слабая связь новости с профилем компании")
     if calibrator is not None:
         score = calibrator(score)

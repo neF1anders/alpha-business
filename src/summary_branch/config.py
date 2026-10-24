@@ -11,8 +11,9 @@ class BranchConfig(BaseModel):
     max_generation_attempts: int = Field(default=2, ge=1)   # попытки генерации баннера при полном бюджете
     chat_generation_attempts: int = Field(default=1, ge=1)  # в чате повтор удваивает задержку, а SLO 4 с
     min_grounding: float = Field(default=0.6, ge=0, le=1)    # ниже саммари считается невалидным
-    cache_ttl_s: int = Field(default=72 * 3600, gt=0)
-    banner_ttl_h: dict[str, int] = Field(default_factory=lambda: {"rate": 72, "fx": 24})
+    cache_ttl_s: int = Field(default=168 * 3600, gt=0)   # не дольше наибольшего banner_ttl_h
+    banner_ttl_h: dict[str, int] = Field(
+        default_factory=lambda: {"rate": 168, "fx": 36, "labor": 120, "demand": 120})   # по срокам актуальности, eval/results/REPORT.md
     banner_ttl_default_h: int = Field(default=36, gt=0)
     urgent_min_score: float = Field(default=0.85, ge=0, le=1)
     news_text_max_chars: int = Field(default=2000, gt=0)

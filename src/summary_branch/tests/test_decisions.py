@@ -74,10 +74,12 @@ def test_banner_id_is_deterministic_and_company_specific():
 def test_expiry_follows_topic():
     seg, company, confidence = decide()
     banner = composer.compose(seg, company, confidence)
-    assert round((banner.expires_at - banner.created_at).total_seconds() / 3600) == 72   # rate
+    assert round((banner.expires_at - banner.created_at).total_seconds() / 3600) == 168   # rate
     fx = composer.compose(seg.model_copy(update={"topic": "fx"}), company, confidence)
-    assert round((fx.expires_at - fx.created_at).total_seconds() / 3600) == 24
-    other = composer.compose(seg.model_copy(update={"topic": "labor"}), company, confidence)
+    assert round((fx.expires_at - fx.created_at).total_seconds() / 3600) == 36
+    labor = composer.compose(seg.model_copy(update={"topic": "labor"}), company, confidence)
+    assert round((labor.expires_at - labor.created_at).total_seconds() / 3600) == 120
+    other = composer.compose(seg.model_copy(update={"topic": "other"}), company, confidence)
     assert round((other.expires_at - other.created_at).total_seconds() / 3600) == 36
 
 

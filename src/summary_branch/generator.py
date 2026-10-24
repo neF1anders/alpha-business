@@ -32,8 +32,8 @@ class ValidatedGenerator:
         self._config = config or BranchConfig()
 
     def is_valid(self, signals: ContentSignals) -> bool:
-        """Валидно: структура целая, числа подтверждены источником, факты обоснованы."""
-        return (signals.structure_ok and not signals.numeric_miss
+        """Валидно: структура целая, числа и слова утверждений опираются на источник, факты обоснованы."""
+        return (signals.structure_ok and not signals.numeric_miss and not signals.unsupported_claim
                 and signals.grounding >= self._config.min_grounding)
 
     def generate(self, req: SummaryRequest) -> GeneratedContent:
@@ -55,8 +55,9 @@ class ValidatedGenerator:
             if self.is_valid(candidate.signals):
                 return candidate
             log.info("саммари не прошло проверку: trace_id=%s attempt=%d/%d structure_ok=%s numeric_miss=%s "
-                     "grounding=%.3f", req.trace_id, attempt, attempts, candidate.signals.structure_ok,
-                     candidate.signals.numeric_miss, candidate.signals.grounding)
+                     "unsupported_claim=%s grounding=%.3f", req.trace_id, attempt, attempts,
+                     candidate.signals.structure_ok, candidate.signals.numeric_miss,
+                     candidate.signals.unsupported_claim, candidate.signals.grounding)
             if best is None or self._rank(candidate) > self._rank(best):
                 best = candidate
         assert best is not None   # первая попытка либо задаёт best, либо возвращает результат, либо бросает
@@ -74,6 +75,6 @@ class ValidatedGenerator:
         return GeneratedContent(draft=draft, claims=claims, sources=sources, signals=signals)
 
     @staticmethod
-    def _rank(content: GeneratedContent) -> tuple[bool, bool, float]:
+    def _rank(content: GeneratedContent) -> tuple[bool, bool, bool, float]:
         signals = content.signals
-        return signals.structure_ok, not signals.numeric_miss, signals.grounding
+        return signals.structure_ok, not signals.numeric_miss, not signals.unsupported_claim, signals.grounding

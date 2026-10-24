@@ -52,7 +52,7 @@ def test_routes_pick_cheap_model_for_banner_and_fast_model_for_chat():
     assert url == f"{PRIMARY_BASE_URL}/chat/completions"
     assert headers["Authorization"] == f"Bearer {KEY}"
     assert body["model"] == DEFAULT_ROUTES["banner"][0] == "deepseek/deepseek-v4.1-flash"
-    assert chat_body["model"] == DEFAULT_ROUTES["chat"][0] == "qwen/qwen3.6-35b-a3b"
+    assert chat_body["model"] == DEFAULT_ROUTES["chat"][0] == "deepseek/deepseek-v4.1-flash"
     assert body["response_format"] == {"type": "json_object"} and body["reasoning"] == {"enabled": False}
     assert (c.calls, c.prompt_tokens, c.completion_tokens) == (2, 200, 40)
 
@@ -119,7 +119,8 @@ def test_model_access_error_switches_model(status):
 
 def test_response_format_is_dropped_per_model_once_rejected():
     c, transport = client((400, b'{"error": "unsupported response_format"}'), ok(json.dumps(DRAFT)),
-                          ok(json.dumps(DRAFT)), ok(json.dumps(DRAFT)))
+                          ok(json.dumps(DRAFT)), ok(json.dumps(DRAFT)),
+                          routes={"banner": ["m/one"], "chat": ["m/two"]})
     assert call(c) == DRAFT and call(c) == DRAFT
     assert "response_format" in transport.requests[0][2]
     assert "response_format" not in transport.requests[1][2] and "response_format" not in transport.requests[2][2]

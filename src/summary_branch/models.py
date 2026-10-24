@@ -157,6 +157,7 @@ class ContentSignals(BaseModel):
     source_quality: float = Field(ge=0, le=1)
     claim_mix: float = Field(ge=0, le=1)
     numeric_miss: bool = False
+    unsupported_claim: bool = False                  # проверяемое утверждение почти не опирается на слова источника
     # метрика качества саммари SQS (диагностика, в рантайм-решении не участвует)
     faithfulness: float = Field(ge=0, le=1)
     coverage: float = Field(ge=0, le=1)

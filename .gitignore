@@ -9,3 +9,7 @@ data/
 *.db
 *.db-wal
 *.db-shm
+
+# сырые прогоны оценки (отчёт REPORT.md остаётся)
+eval/results/*.jsonl
+eval/results/*.json
