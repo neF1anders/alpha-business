@@ -88,9 +88,9 @@ def _bank_block(material: BankMaterialRef) -> str:
             f"<<<END_BANK>>>")
 
 
-def _company_block(company: CompanyContext) -> str:
-    """Только теги и признаки: идентификаторы компании и сегмента в промпт не попадают."""
-    return (f"<<<COMPANY>>>\ntags: {_attr(', '.join(company.tags))}\n"
+def _company_block(company: CompanyContext, role: str) -> str:
+    """Роль, теги и признаки: идентификаторы, группа, суммы и контрагенты в промпт не попадают."""
+    return (f"<<<COMPANY>>>\nrole: {_attr(role)}\ntags: {_attr(', '.join(company.tags))}\n"
             f"features: {_attr('; '.join(company.features))}\n<<<END_COMPANY>>>")
 
 
@@ -103,7 +103,7 @@ def build_prompt(req: SummaryRequest, config: BranchConfig) -> str:
     data += [_news_block(n, config.news_text_max_chars) for n in req.news]
     data += [_bank_block(m) for m in req.bank_materials]
     if req.mode == Mode.CHAT:
-        data.append(_company_block(req.company))
+        data.append(_company_block(req.company, req.role))
         data.append(f"<<<QUESTION>>>\n{_defang(req.question or '')}\n<<<END_QUESTION>>>")
     return "\n\n".join(["\n".join(system), "\n".join(data)])
 

@@ -14,8 +14,9 @@ from typing import Callable, Optional
 
 from .models import (
     Banner, Claim, ClaimType, CompanyContext, Confidence, ConfidenceComponents, ContentSignals,
-    Decision, LeadRef, RankedNewsItem, SourceKind, SourceRef, SummaryDraft, SummaryRequest, utcnow,
+    Decision, LeadRef, RankedNewsItem, Relationship, Severity, SourceKind, SourceRef, SummaryDraft, SummaryRequest, utcnow,
 )
+from .personalization import indirect_exposure, news_sectors, sector_match, topic_exposure
 
 # --------------------------------------------------------------------------- параметры (вынести в конфиг)
 SOURCE_PRIOR = {SourceKind.PRIMARY: 1.0, SourceKind.BANK: 0.9, SourceKind.MEDIA: 0.6}
@@ -27,6 +28,10 @@ MIN_CLAIM_LEX = 0.5            # доля основ слов проверяем
 FAITHFUL_GROUNDING = 0.6       # утверждение считается подтверждённым источником (для SQS)
 NUMERIC_MISS_CAP = 0.5         # потолок оценки при выдуманном числе или слабо подтверждённом утверждении
 RELEVANCE_FLOOR, RELEVANCE_CAP = 0.25, 0.45   # ниже порога релевантности оценка не выше потолка
+EXPOSURE_FLOOR = 0.5           # чувствительность компании к теме ниже порога и нет косвенной связи: оценка не выше RELEVANCE_CAP
+PROFILE_WEIGHTS = {"rerank": 0.35, "exposure": 0.45, "sector": 0.10, "region": 0.10}   # релевантность при известном профиле
+CAVEAT_CEILING = HIGH - 0.01   # потолок оценки, при котором баннер уходит в «с пометкой»
+_REGION_PREFIX = "region:"
 HALF_LIFE_H = {"rate": 72.0, "fx": 24.0, "default": 48.0}
 SEVERITY_WEIGHT = {"attention": 1.0, "watch": 0.7, "opportunity": 0.8}
 HEADLINE_MAX, FOR_YOU_MAX = 60, 140
@@ -154,15 +159,54 @@ def content_signals(req: SummaryRequest, draft: SummaryDraft, claims: list[Claim
 
 
 # --------------------------------------------------------------------------- уровень компании
+def _region_match(company: CompanyContext, news_tags: list[str]) -> float:
+    """1.0, если новость общая или про регион компании; 0.0, если про другой регион."""
+    news_regions = {t.lower() for t in news_tags if t.lower().startswith(_REGION_PREFIX)}
+    if not news_regions:
+        return 1.0
+    return 1.0 if news_regions & {t.lower() for t in company.tags} else 0.0
+
+
+def _relevance(lead: LeadRef, topic: str, company: CompanyContext, reasons: list[str],
+               requested_by_user: bool) -> tuple[float, Optional[float]]:
+    """(релевантность, чувствительность к теме или None). Без профиля или без тем и отраслей новости работает по тегам."""
+    tag_match = tag_overlap(company.tags, lead.tags)
+    profile = company.profile
+    legacy = _clip(0.6 * lead.rerank_score + 0.4 * tag_match)
+    if profile is None:
+        return legacy, None
+    sectors = news_sectors(lead.tags)
+    direct = sector_match(profile, sectors)
+    indirect = indirect_exposure(profile, sectors)
+    exposures = topic_exposure(profile)
+    if topic in exposures:
+        exposure = max(exposures[topic].value, 1.0 if direct else 0.0, indirect)
+    elif sectors:                                    # отраслевая новость вне макротем: важна «своей» и связанным отраслям
+        exposure = 1.0 if direct else indirect
+    else:
+        return legacy, None
+    if exposure < EXPOSURE_FLOOR and indirect == 0 and not requested_by_user:
+        reasons.append(f"компания не чувствительна к теме «{topic}»")
+    w = PROFILE_WEIGHTS
+    relevance = (w["rerank"] * lead.rerank_score + w["exposure"] * exposure
+                 + w["sector"] * _clip(tag_match + indirect + (1.0 if direct else 0.0))
+                 + w["region"] * _region_match(company, lead.tags))
+    return _clip(relevance), exposure
+
+
 def company_confidence(signals: ContentSignals, lead: LeadRef, topic: str, company: CompanyContext,
                        has_sources: bool = True, now: Optional[datetime] = None,
-                       calibrator: Optional[Callable[[float], float]] = None) -> Confidence:
+                       calibrator: Optional[Callable[[float], float]] = None,
+                       severity: Optional[Severity] = None, requested_by_user: bool = False) -> Confidence:
+    """requested_by_user: вопрос задал сам пользователь (чат), поэтому «не про вас» не понижает оценку."""
     now = now or utcnow()
     reasons: list[str] = []
-    relevance = _clip(0.6 * lead.rerank_score + 0.4 * tag_overlap(company.tags, lead.tags))
+    relevance, exposure = _relevance(lead, topic, company, reasons, requested_by_user)
+    off_topic = any(r.startswith("компания не чувствительна") for r in reasons)
     fresh = freshness(lead.published_at, now, topic)
     comp = ConfidenceComponents(relevance=relevance, grounding=signals.grounding,
-                                source_quality=signals.source_quality, freshness=fresh, claim_mix=signals.claim_mix)
+                                source_quality=signals.source_quality, freshness=fresh, claim_mix=signals.claim_mix,
+                                personal_fit=exposure)
 
     eps = 1e-3   # взвешенное геометрическое среднее: один провальный компонент тянет всё вниз
     score = math.exp(sum(w * math.log(max(getattr(comp, k), eps)) for k, w in WEIGHTS.items()))
@@ -180,9 +224,13 @@ def company_confidence(signals: ContentSignals, lead: LeadRef, topic: str, compa
     if not has_sources:
         score = 0.0
         reasons.append("нет ни одного источника")
-    if relevance < RELEVANCE_FLOOR:
+    if relevance < RELEVANCE_FLOOR or off_topic:
         score = min(score, RELEVANCE_CAP)
         reasons.append("слабая связь новости с профилем компании")
+    profile = company.profile
+    if profile and profile.negative_flag and severity == Severity.OPPORTUNITY:
+        score = min(score, CAVEAT_CEILING)
+        reasons.append("у компании негативный флаг: возможность подаём с пометкой")
     if calibrator is not None:
         score = calibrator(score)
     score = _clip(score)
@@ -199,7 +247,24 @@ def company_confidence(signals: ContentSignals, lead: LeadRef, topic: str, compa
 
 
 # --------------------------------------------------------------------------- «для вас»
+_CLIENT_PRODUCT_CLAIM = re.compile(r"\b(ваш\w*|у вас)\b[^.!?]{0,25}(кредит|лизинг|депозит|гарант|факторинг|зарплатн)", re.I)
+
+
+def _claims_client_product(text: str, company: CompanyContext) -> bool:
+    """Продукты банка известны только у клиентов: остальным «ваш кредит» говорить нельзя."""
+    profile = company.profile
+    return bool(profile and profile.relationship != Relationship.CLIENT and _CLIENT_PRODUCT_CLAIM.search(text))
+
+
 def render_for_you(template: str, fallback: str, company: CompanyContext, claims_text: str) -> str:
+    """Строка «для вас» компании; текст, говорящий о продуктах банка не клиенту, заменяется запасным или пустой строкой."""
+    text = _fill_template(template, fallback, company, claims_text)
+    if not _claims_client_product(text, company):
+        return text
+    return "" if _claims_client_product(fallback, company) else fallback
+
+
+def _fill_template(template: str, fallback: str, company: CompanyContext, claims_text: str) -> str:
     """Подставляет в {feature} признак компании, лучше всего совпавший с текстом утверждений. Нет совпадения - fallback."""
     if "{feature}" not in template:
         return template or fallback

@@ -9,9 +9,11 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
-from dataset import load_companies, load_news, read_jsonl
+from dataset import load_news, read_jsonl
+from relabel import section_personalization
 from stats import percentile, rate
-from summary_branch.scoring import tag_overlap
+from summary_branch.config import BranchConfig
+from summary_branch.scoring import HALF_LIFE_H
 
 RESULTS = Path(__file__).resolve().parents[2] / "eval" / "results"
 SLO_S = 4.0
@@ -115,7 +117,8 @@ def section_ttl(lines: list[str]) -> dict:
         by_topic[n.topic].append(n.shelf_life_h)
     lines += ["## 3. TTL и период полураспада по сроку актуальности (метки Haiku)", "",
               "| Тема | n | медиана, ч | p75, ч | предлагаемый TTL баннера, ч | HALF_LIFE, ч | сейчас TTL / HALF_LIFE |", "|---|---|---|---|---|---|---|"]
-    current_ttl, current_half = {"rate": 72, "fx": 24}, {"rate": 72.0, "fx": 24.0}
+    config = BranchConfig()
+    current_ttl, current_half = dict(config.banner_ttl_h), dict(HALF_LIFE_H)
     proposal = {}
     for topic, values in sorted(by_topic.items()):
         med, p75 = statistics.median(values), percentile(values, 75)
@@ -124,29 +127,15 @@ def section_ttl(lines: list[str]) -> dict:
             ttl = 36   # смесь налогов и шума: p75 не описывает типичную новость
         proposal[topic] = (ttl, half)
         lines.append(f"| {topic} | {len(values)} | {med:.0f} | {p75:.0f} | {ttl} | {half} | "
-                     f"{current_ttl.get(topic, 36)} / {current_half.get(topic, 48.0):.0f} |")
+                     f"{current_ttl.get(topic, config.banner_ttl_h.get("default", 36))} / {current_half.get(topic, HALF_LIFE_H["default"]):.0f} |")
     cache_h = max(t for t, _ in proposal.values())
     lines += ["", f"TTL = p75 срока актуальности, округлён до 12 ч и ограничен {TTL_CAP_H} ч (ставка: по данным 294 ч). "
               "Единственное «отсечённое» верное утверждение при lex<0.5 это ответ «в новостях нет данных» на вопрос не по теме (q17): отсечение здесь желательно. "
               "HALF_LIFE менять не предлагаю: он двигает порядок показа, а срок актуальности размечен моделью. "
               "Тема «other» смесь налоговых и шумовых новостей, для неё остаётся 36 ч. "
-              f"Кэш саммари сегмента: до {cache_h} ч (сейчас 72 ч). "
+              f"Кэш саммари сегмента: до {cache_h} ч (сейчас {config.cache_ttl_s // 3600} ч). "
               "Срок актуальности оценён моделью, не пользователями: значения как стартовые, уточнять по «не про меня» и «неточно».", ""]
     return {"ttl": proposal, "cache_h": cache_h}
-
-
-def section_relevance(lines: list[str]) -> None:
-    news = {n.item.news_id: n.item for n in load_news()}
-    companies = {c.company.company_id: c.company for c in load_companies()}
-    groups: dict[int, list[float]] = defaultdict(list)
-    for p in read_jsonl("banner_pairs.jsonl"):
-        groups[p["relevance"]].append(tag_overlap(companies[p["company_id"]].tags, news[p["news_id"]].tags))
-    lines += ["## 4. Релевантность: пересечение тегов компании и новости по меткам пар", "", "| Метка | пар | медиана overlap | p25 | p75 |", "|---|---|---|---|---|"]
-    for label in sorted(groups):
-        v = groups[label]
-        lines.append(f"| {label} | {len(v)} | {statistics.median(v):.2f} | {percentile(v, 25):.2f} | {percentile(v, 75):.2f} |")
-    lines += ["", "Порог RELEVANCE_FLOOR=0.25 действует на 0.6×rerank + 0.4×overlap; при rerank≥0.5 новость с нулевым пересечением тегов "
-              "всё равно проходит порог, значит пересечение не отсекает нерелевантное. Реальный rerank_score в синтетике не воспроизводится, поэтому порог не меняю.", ""]
 
 
 RECOMMENDATIONS = """## 5. Что изменено в ветке по итогам
@@ -160,17 +149,23 @@ RECOMMENDATIONS = """## 5. Что изменено в ветке по итога
 **Чат**: маршрут deepseek-v4.1-flash первой, qwen запасной; укороченный вывод (headline до 4 слов, пустые шаблоны «для вас», follow_ups пустой). После финальной проверки p50 около 2.6 с, редкие всплески шлюза до 5-7 с.
 
 **TTL**: значения из таблицы раздела 3 применены в `config.py`.
+
+**Персонализация по профилю компании (personalization.py, scoring.py, models.py)**
+1. Ветка принимает `CompanyProfile` и `UserContext`; чувствительность к темам (ставка, курс, труд, спрос), сегмент, теги и признаки «для вас» выводятся из профиля. Платёжный граф используется только как доли отраслей контрагентов.
+2. Релевантность = 0.35·rerank + 0.45·чувствительность + 0.10·отрасль/косвенная связь + 0.10·регион. Если чувствительность ниже `EXPOSURE_FLOOR=0.5` и косвенной связи нет, оценка не выше 0.45 (показывается только новость). В чате вопрос задал сам пользователь, поэтому порог не применяется.
+3. Результат на переразметке: шум (баннер показан при метке 0) упал со 100% до 23%, упущено 2 из 97 пар с меткой 2. Порог 0.5 выбран за персонализацию; порог 0.25 даёт шум 42% без упущенного. На всей базе организаторов (2000 профилей × 28 новостей) при 0.5 баннер получают 28% пар, при 0.25 — 52%: часть лент будет состоять из заголовков, и это решение продукта.
+4. Известное ограничение: ВЭД считается чувствительным ко всем валютам; соответствие «страна ↔ валюта новости» не реализовано (34 пары в разметке).
 """
 
 
 def main() -> None:
-    lines = ["# Отчёт: пороги валидатора и TTL на синтетике", "",
-             "Метки синтетические (Haiku, часть проверена вручную), скилл humanizer не использовался. Результаты предварительные: "
+    lines = ["# Отчёт: валидатор, TTL и персонализация на синтетике", "",
+             "Метки синтетические (Haiku; метки персонализации проверены автоматически по профилю, построчное чтение не проводилось), скилл humanizer не использовался. Результаты предварительные: "
              "честные черновики в оффлайн-прогоне копируют источник, поэтому реальные ложные отказы смотрит живой раздел.", ""]
     section_offline(lines)
     section_live(lines)
     section_ttl(lines)
-    section_relevance(lines)
+    section_personalization(lines)
     lines.append(RECOMMENDATIONS)
     out = RESULTS / "REPORT.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")

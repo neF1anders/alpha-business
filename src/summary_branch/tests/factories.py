@@ -2,7 +2,7 @@
 from datetime import timedelta
 
 from summary_branch.models import (
-    BankMaterialRef, CompanyContext, Mode, RankedNewsItem, SourceKind, SummaryRequest, utcnow,
+    BankMaterialRef, CompanyContext, CompanyProfile, Mode, RankedNewsItem, SourceKind, SummaryRequest, utcnow,
 )
 
 RATE_TEXT = ("Совет директоров Банка России 11 сентября сохранил ключевую ставку на уровне 14,0%. "
@@ -22,6 +22,14 @@ def make_company(company_id="co1", segment_id="metal-large-north", **kw) -> Comp
                 features=["3 кредитных продукта"])
     base.update(kw)
     return CompanyContext(**base)
+
+
+def make_profile(**kw) -> CompanyProfile:
+    """Вымышленный профиль: розничная компания, клиент банка без кредитов и ВЭД."""
+    base = dict(okved_code="47.11", okved_name="Торговля розничная в неспециализированных магазинах",
+                workers_band="Менее 15", region="Тверская область", relationship="client")
+    base.update(kw)
+    return CompanyProfile(**base)
 
 
 def make_bank_material(doc_id="d1", **kw) -> BankMaterialRef:

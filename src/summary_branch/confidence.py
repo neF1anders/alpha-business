@@ -27,4 +27,4 @@ class DefaultConfidenceScorer:
 
     def score(self, seg: SegmentSummary, company: CompanyContext, now: Optional[datetime] = None) -> Confidence:
         return company_confidence(seg.signals, seg.lead, seg.topic, company, has_sources=bool(seg.sources),
-                                  now=now, calibrator=self._calibrator)
+                                  now=now, calibrator=self._calibrator, severity=seg.severity)

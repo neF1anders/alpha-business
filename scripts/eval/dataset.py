@@ -72,6 +72,37 @@ def load_companies() -> list[CompanyRow]:
         name=r["name"], exposure=r["exposure"]) for r in read_jsonl("companies.jsonl")]
 
 
+def _profile_problems(news_ids: set[str]) -> list[str]:
+    """Профили компаний и переразмеченные пары (если файлы есть): схема, полнота сетки, допустимые метки."""
+    from summary_branch.models import CompanyProfile
+    found: list[str] = []
+    try:
+        profiles = read_jsonl("profiles.jsonl")
+    except OSError:
+        return found
+    ids = []
+    for r in profiles:
+        ids.append(r["company_id"])
+        try:
+            CompanyProfile(**r["profile"])
+        except Exception as exc:
+            found.append(f"{r['company_id']}: профиль: {exc}")
+    for name in ("pairs_v2_a.jsonl", "pairs_v2_b.jsonl"):
+        try:
+            rows = read_jsonl(name)
+        except OSError:
+            continue
+        seen = {(r["news_id"], r["company_id"]) for r in rows}
+        found += [f"{name}: повтор пары" for _ in range(len(rows) - len(seen))]
+        found += [f"{name}: метка {r['relevance']!r}" for r in rows if r.get("relevance") not in (0, 1, 2)]
+        found += [f"{name}: неизвестная новость или компания {r['news_id']}/{r['company_id']}"
+                  for r in rows if r["news_id"] not in news_ids or r["company_id"] not in ids]
+        owners = {r["company_id"] for r in rows}
+        if len(seen) != len(news_ids) * len(owners):
+            found.append(f"{name}: пар {len(seen)}, ожидалось {len(news_ids) * len(owners)}")
+    return found
+
+
 def problems() -> list[str]:
     """Список найденных проблем; пустой список означает, что датасет годен."""
     found: list[str] = []
@@ -103,6 +134,7 @@ def problems() -> list[str]:
             found.append(f"{cid}: теги вне словаря")
         if not set(r.get("exposure", [])) <= {"rate", "fx", "labor", "demand"} or not r.get("exposure"):
             found.append(f"{cid}: exposure {r.get('exposure')!r}")
+    found += _profile_problems({r["news_id"] for r in raw_news})
     by_cluster: dict[str, set[str]] = {}
     for r in raw_news:
         by_cluster.setdefault(r["cluster_id"], set()).add(r["topic"])

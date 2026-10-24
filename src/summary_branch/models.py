@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def utcnow() -> datetime:
@@ -58,13 +58,89 @@ class BudgetTier(str, Enum):
     CACHED_ONLY = "cached_only"
 
 
+class Relationship(str, Enum):
+    CLIENT = "client"
+    PROSPECT = "prospect"            # продукты банка у такой компании неизвестны: «ваш кредит» говорить нельзя
+    CLOSE_CLIENT = "close_client"
+
+
+class Product(str, Enum):
+    RKO = "rko"
+    GUARANTEE = "guarantee"
+    LOAN = "loan"
+    LEASING = "leasing"
+    DEPOSIT = "deposit"
+    PAYROLL = "payroll"
+    FACTORING = "factoring"
+
+
+class FlowRole(str, Enum):
+    PAYER = "payer"
+    RECEIVER = "receiver"
+    BALANCED = "balanced"
+
+
+# Метка выручки, которой организаторы заменяют пропуск
+_REVENUE_PLACEHOLDER = 1000.0
+
+
+class PaymentProfile(BaseModel):
+    """Агрегаты платёжного графа. Идентификаторов, названий и сумм контрагентов здесь нет и быть не должно."""
+    counterparty_sectors: dict[str, float] = Field(default_factory=dict)   # раздел ОКВЭД ("46") -> доля контрагентов
+    counterparty_count_band: str = ""
+    flow_role: FlowRole = FlowRole.BALANCED
+
+
+class CompanyProfile(BaseModel):
+    """Профиль компании в терминах данных организаторов; чувствительность к темам считает personalization.py."""
+    okved_code: str = ""
+    okved_name: str = ""
+    age_band: str = ""
+    lifecycle: str = ""                              # ECO_MARK_LABEL
+    workers_band: str = ""                           # «Менее 15», «16-100», «101-250», «Более 251»
+    revenue: Optional[float] = None
+    region: str = ""
+    city: str = ""
+    relationship: Relationship = Relationship.PROSPECT
+    products: set[Product] = Field(default_factory=set)
+    foreign_trade: bool = False
+    trade_countries: list[str] = Field(default_factory=list)
+    negative_flag: bool = False
+    group_id: str = ""                               # только как ключ группировки, в промпт и логи не идёт
+    payments: Optional[PaymentProfile] = None
+
+    @field_validator("okved_code")
+    @classmethod
+    def _normalise_okved(cls, code: str) -> str:
+        head, dot, tail = code.strip().partition(".")
+        return f"{head}.{tail}0" if dot and len(tail) == 1 else code.strip()
+
+    @field_validator("revenue")
+    @classmethod
+    def _drop_placeholder_revenue(cls, revenue: Optional[float]) -> Optional[float]:
+        return None if revenue == _REVENUE_PLACEHOLDER else revenue
+
+    @model_validator(mode="after")
+    def _foreign_trade_from_countries(self) -> "CompanyProfile":
+        # в данных флаг ВЭД и список стран расходятся: считаем ВЭД, если есть хоть один признак
+        if self.trade_countries and not self.foreign_trade:
+            self.foreign_trade = True
+        return self
+
+
+class UserContext(BaseModel):
+    user_id: str
+    role: str = "cfo"
+
+
 # --------------------------------------------------------------------------- 1. вход от оркестратора
 class CompanyContext(BaseModel):
     company_id: str
-    segment_id: str                                  # ключ сегментного кэша; правило нарезки задаёт ветка профилей
+    segment_id: str                                  # ключ сегментного кэша; рекомендуемое правило: personalization.segment_signature
     role: str = "cfo"
     tags: list[str] = Field(default_factory=list)    # машинные теги: макрофакторы, отрасль, география (для матчинга с новостью)
     features: list[str] = Field(default_factory=list)  # человекочитаемые признаки для строки «для вас»: «3 кредитных продукта»
+    profile: Optional[CompanyProfile] = None         # сырой профиль; без него работаем только по tags и features
 
 
 class RankedNewsItem(BaseModel):
@@ -94,9 +170,14 @@ class SummaryRequest(BaseModel):
     mode: Mode
     question: Optional[str] = None                   # 1) вопрос чата, только в режиме chat
     company: CompanyContext                          # 2) тег компании и доп. информация
+    user: Optional[UserContext] = None               # кто спрашивает; без него роль берётся из company.role
     news: list[RankedNewsItem] = Field(min_length=1)  # 3) батч новостей от реранкера, по убыванию rerank_score
     bank_materials: list[BankMaterialRef] = Field(default_factory=list)
     budget: BudgetTier = BudgetTier.FULL
+
+    @property
+    def role(self) -> str:
+        return self.user.role if self.user else self.company.role
 
     @model_validator(mode="after")
     def _check_mode(self) -> "SummaryRequest":
@@ -196,6 +277,7 @@ class ConfidenceComponents(BaseModel):
     source_quality: float
     freshness: float
     claim_mix: float
+    personal_fit: Optional[float] = None             # чувствительность компании к теме; None без профиля
 
 
 class Confidence(BaseModel):

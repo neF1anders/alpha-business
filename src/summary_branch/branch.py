@@ -13,6 +13,7 @@ from .generator import ValidatedGenerator
 from .interfaces import (
     BannerComposer, BannerStore, CompanyDirectory, ConfidenceScorer, Publisher,
 )
+from .personalization import enrich
 from .models import (
     Banner, BannerDTO, ChatAnswer, CompanyContext, ContentKey, Decision, Mode, RankedNewsItem, SegmentSummary,
     Severity, SourceRef, SummaryRequest,
@@ -44,8 +45,14 @@ class DefaultSummaryBranch:
     def handle(self, req: SummaryRequest) -> list[BannerDTO] | ChatAnswer:
         return self.handle_chat(req) if req.mode == Mode.CHAT else self.serve_banners(req)
 
+    @staticmethod
+    def _enriched(req: SummaryRequest) -> SummaryRequest:
+        """Добавляет к тегам и признакам компании выведенные из её профиля."""
+        return req.model_copy(update={"company": enrich(req.company)})
+
     def serve_banners(self, req: SummaryRequest) -> list[BannerDTO]:
         """Баннеры компании запроса: готовые из хранилища отдаются сразу, недостающие генерируются и сохраняются."""
+        req = self._enriched(req)
         clusters = self._top_clusters(req)
         company_id = req.company.company_id
         ids = [self._banner_id(req.company, items) for items in clusters]
@@ -65,6 +72,7 @@ class DefaultSummaryBranch:
 
     # ------------------------------------------------------------------ banner
     def handle_banner(self, req: SummaryRequest) -> list[Banner]:
+        req = self._enriched(req)
         companies = self._segment_companies(req.company)
         created: list[Banner] = []
         for seg in self._build_segments(req, self._top_clusters(req)):
@@ -107,7 +115,7 @@ class DefaultSummaryBranch:
     def _segment_companies(self, representative: CompanyContext) -> list[CompanyContext]:
         companies = {representative.company_id: representative}
         for company in self._directory.active_in_segment(representative.segment_id):
-            companies.setdefault(company.company_id, company)
+            companies.setdefault(company.company_id, enrich(company))
         return list(companies.values())
 
     def _publish_for_company(self, trace_id, seg, company) -> Banner | None:
@@ -131,6 +139,7 @@ class DefaultSummaryBranch:
 
     # ------------------------------------------------------------------ chat
     def handle_chat(self, req: SummaryRequest) -> ChatAnswer:
+        req = self._enriched(req)
         lead = req.news[0]
         try:
             content = self._generator.generate(req)
@@ -140,7 +149,7 @@ class DefaultSummaryBranch:
 
         draft, claims, sources, signals = content.draft, content.claims, content.sources, content.signals
         confidence = company_confidence(signals, lead_from_news(lead), draft.topic, req.company,
-                                        has_sources=bool(sources))
+                                        has_sources=bool(sources), severity=draft.severity, requested_by_user=True)
         log.info("чат: trace_id=%s score=%.3f decision=%s reasons=%s",
                  req.trace_id, confidence.score, confidence.decision.value, confidence.reasons)
         if confidence.decision in (Decision.SHOW_RAW_NEWS, Decision.DROP) or not signals.structure_ok:

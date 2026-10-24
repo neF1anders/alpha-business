@@ -43,13 +43,13 @@ def test_banner_prompt_is_company_independent_and_chat_has_question():
     assert "<<<QUESTION>>>" not in banner.split(DATA_BEGIN, 1)[1]
 
 
-def test_chat_prompt_has_only_tags_and_features_of_company():
+def test_chat_prompt_has_only_role_tags_and_features_of_company():
     company = make_company("secret-company-42", segment_id="secret-segment", role="ceo",
                            tags=["rate", "metal"], features=["3 кредитных продукта"])
     prompt = build_prompt(make_req(mode=Mode.CHAT, question="что со ставкой?", company=company), BranchConfig())
     data = prompt.split(DATA_BEGIN, 1)[1]
-    assert "tags: rate, metal" in data and "features: 3 кредитных продукта" in data
-    for identifier in ("secret-company-42", "secret-segment", "ceo"):
+    assert "role: ceo" in data and "tags: rate, metal" in data and "features: 3 кредитных продукта" in data
+    for identifier in ("secret-company-42", "secret-segment"):
         assert identifier not in prompt
 
 

@@ -5,7 +5,7 @@ __pycache__/
 .env
 *.docx
 # локальное хранилище баннеров (SQLite, WAL)
-data/
+/data/
 *.db
 *.db-wal
 *.db-shm
