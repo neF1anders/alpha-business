@@ -219,3 +219,93 @@ def test_one_failing_cluster_does_not_block_the_others():
                       rerank_score=0.8)]
     rt = build_branch(FlakyLLM(), StaticDirectory(COMPANIES))
     assert {b.key.cluster_id for b in rt.branch.handle_banner(make_req(news=news))} == {"c1"}
+
+
+# --------------------------------------------------------------------------- вход оркестратора и проверка
+def fabricate_first(times: int):
+    """Первые `times` генераций подставляют выдуманное число, дальше ответ честный."""
+    state = {"left": times}
+
+    def tamper(draft):
+        if state["left"] > 0:
+            state["left"] -= 1
+            draft["claims"][0]["text"] = "Банк России повысил ставку до 16%"
+        return draft
+    return tamper
+
+
+def test_handle_returns_dtos_for_requesting_company_only():
+    _, rt = runtime()
+    dtos = rt.branch.handle(make_req())
+    assert [d.banner_id for d in dtos] == banner_ids(rt, "co1") and not dtos[0].raw_news
+    assert banner_ids(rt, "co2")                    # остальным компаниям сегмента баннеры тоже предрассчитаны
+
+
+def test_handle_serves_stored_banners_without_generation():
+    llm, rt = runtime()
+    first = rt.branch.handle(make_req())
+    rt.cache.invalidate_cluster("c1")               # кэш сегмента не нужен: баннер уже лежит в хранилище
+    second = rt.branch.handle(make_req())
+    assert llm.call_count == 1 and first == second
+
+
+def test_handle_generates_only_missing_clusters():
+    llm, rt = runtime()
+    rt.branch.handle(make_req(news=[make_news("n1", "c1")]))
+    dtos = rt.branch.handle(make_req(news=[make_news("n1", "c1"), make_news("n2", "c2", rerank_score=0.8)]))
+    assert llm.call_count == 2 and len(dtos) == 2
+
+
+def test_handle_skips_banner_hidden_by_company():
+    _, rt = runtime()
+    banner_id = rt.branch.handle(make_req())[0].banner_id
+    rt.store.suppress("co1", banner_id, "не про меня")
+    assert rt.branch.handle(make_req()) == []
+
+
+def test_handle_dispatches_chat_by_mode():
+    _, rt = runtime()
+    assert rt.branch.handle(chat_req()).claims
+
+
+def test_invalid_summary_is_regenerated_and_valid_one_is_published():
+    llm, rt = runtime(FakeLLMClient(tamper=fabricate_first(1)))
+    dto = rt.branch.handle(make_req())[0]
+    assert llm.call_count == 2 and not dto.raw_news and not dto.caveat
+
+
+def test_generation_attempts_are_capped_and_best_effort_is_saved():
+    llm, rt = runtime(FakeLLMClient(tamper=fabricate_first(9)))
+    dto = rt.branch.handle(make_req())[0]
+    assert llm.call_count == BranchConfig().max_generation_attempts == 2
+    assert dto.raw_news                              # выдуманное число: только новость и ссылка
+
+
+def test_lite_budget_does_not_retry():
+    llm, rt = runtime(FakeLLMClient(tamper=fabricate_first(9)))
+    rt.branch.handle(make_req(budget=BudgetTier.LITE))
+    assert llm.call_count == 1
+
+
+def test_chat_does_not_regenerate_by_default_to_keep_latency():
+    llm, rt = runtime(FakeLLMClient(tamper=fabricate_first(1)))
+    answer = rt.branch.handle(chat_req())
+    assert llm.call_count == 1 and answer.raw_news      # выдуманное число: только новость, без второго вызова
+
+
+def test_chat_regenerates_invalid_answer_when_attempts_allowed():
+    llm, rt = runtime(FakeLLMClient(tamper=fabricate_first(1)), config=BranchConfig(chat_generation_attempts=2))
+    answer = rt.branch.handle(chat_req())
+    assert llm.call_count == 2 and not answer.raw_news and answer.claims
+
+
+def test_banners_persist_in_local_file_across_restart(tmp_path):
+    config = BranchConfig(banner_store_path=str(tmp_path / "banners.db"))
+    llm1, rt1 = runtime(config=config)
+    first = rt1.branch.handle(make_req())
+    rt1.store.close()                                # процесс «остановлен»
+
+    llm2, rt2 = runtime(config=config)               # новый процесс: кэш сегментов пуст, баннеры в файле
+    assert rt2.branch.handle(make_req()) == first
+    assert llm1.call_count == 1 and llm2.call_count == 0
+    rt2.store.close()

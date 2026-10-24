@@ -60,7 +60,7 @@ class InMemoryBannerStore:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._banners: dict[str, dict[str, Banner]] = {}
-        self._dtos: dict[str, BannerDTO] = {}
+        self._dtos: dict[tuple[str, str], BannerDTO] = {}
         self._seen: dict[str, set[str]] = {}
         self._suppressed: dict[str, dict[str, str]] = {}
 
@@ -74,8 +74,16 @@ class InMemoryBannerStore:
             company_banners = self._banners.setdefault(banner.company_id, {})
             is_new = banner.banner_id not in company_banners
             company_banners[banner.banner_id] = banner.model_copy(deep=True)
-            self._dtos[banner.banner_id] = dto.model_copy(deep=True)
+            self._dtos[(banner.company_id, banner.banner_id)] = dto.model_copy(deep=True)
             return is_new and banner.banner_id not in self._suppressed.get(banner.company_id, {})
+
+    def get(self, company_id: str, banner_id: str, now: Optional[datetime] = None) -> Optional[BannerDTO]:
+        now = now or utcnow()
+        with self._lock:
+            banner = self._banners.get(company_id, {}).get(banner_id)
+            if banner is None or banner.is_expired(now) or banner_id in self._suppressed.get(company_id, {}):
+                return None
+            return self._dtos[(company_id, banner_id)].model_copy(deep=True)
 
     def top_k(self, company_id: str, k: int, now: Optional[datetime] = None) -> list[BannerDTO]:
         now = now or utcnow()
@@ -84,7 +92,7 @@ class InMemoryBannerStore:
             pool = [b for b in self._banners.get(company_id, {}).values()
                     if b.banner_id not in hidden and not b.is_expired(now)]
             chosen = pick_top_k(pool, k, now, set(self._seen.get(company_id, set())))
-            return [self._dtos[b.banner_id].model_copy(deep=True) for b in chosen]
+            return [self._dtos[(company_id, b.banner_id)].model_copy(deep=True) for b in chosen]
 
     def mark_seen(self, company_id: str, banner_id: str) -> None:
         with self._lock:
@@ -103,7 +111,7 @@ class InMemoryBannerStore:
                 stale = [bid for bid, b in company_banners.items() if b.key.cluster_id == cluster_id]
                 for banner_id in stale:
                     del company_banners[banner_id]
-                    self._dtos.pop(banner_id, None)
+                    self._dtos.pop((company_id, banner_id), None)
                     self._seen.get(company_id, set()).discard(banner_id)   # новое событие снова считается непросмотренным
                     removed += 1
         log.info("кластер снят с выдачи: cluster=%s removed=%d reason=%s", cluster_id, removed, reason)
@@ -113,5 +121,5 @@ class InMemoryBannerStore:
         for company_id, company_banners in self._banners.items():
             for banner_id in [bid for bid, b in company_banners.items() if b.is_expired(now)]:
                 del company_banners[banner_id]
-                self._dtos.pop(banner_id, None)
+                self._dtos.pop((company_id, banner_id), None)
                 self._seen.get(company_id, set()).discard(banner_id)

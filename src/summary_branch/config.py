@@ -8,6 +8,9 @@ class BranchConfig(BaseModel):
     max_clusters_per_request: int = Field(default=3, ge=1)
     top_k_serve: int = Field(default=3, ge=1)
     max_parallel_clusters: int = Field(default=3, ge=1)
+    max_generation_attempts: int = Field(default=2, ge=1)   # попытки генерации баннера при полном бюджете
+    chat_generation_attempts: int = Field(default=1, ge=1)  # в чате повтор удваивает задержку, а SLO 4 с
+    min_grounding: float = Field(default=0.6, ge=0, le=1)    # ниже саммари считается невалидным
     cache_ttl_s: int = Field(default=72 * 3600, gt=0)
     banner_ttl_h: dict[str, int] = Field(default_factory=lambda: {"rate": 72, "fx": 24})
     banner_ttl_default_h: int = Field(default=36, gt=0)
@@ -16,6 +19,7 @@ class BranchConfig(BaseModel):
     quote_max_chars: int = Field(default=200, gt=0)
     max_sources: int = Field(default=3, gt=0)
     prompt_version: str = "v1"
+    banner_store_path: str | None = None   # файл SQLite для баннеров; None — только ОЗУ
     topic_labels_ru: dict[str, str] = Field(default_factory=lambda: {
         "rate": "ставка", "fx": "курс", "labor": "рынок труда", "demand": "спрос",
     })

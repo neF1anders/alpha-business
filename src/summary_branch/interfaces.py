@@ -69,6 +69,8 @@ class BannerStore(Protocol):
     """Индекс готовых баннеров по компаниям. Чтение топ-k должно быть быстрым (десятки мс)."""
     def put(self, banner: Banner, dto: BannerDTO) -> bool:
         """Идемпотентно по banner_id. True, если баннер новый для компании и не скрыт ею (его можно пушить)."""
+    def get(self, company_id: str, banner_id: str, now: Optional[datetime] = None) -> Optional[BannerDTO]:
+        """Готовая выдача, если баннер есть, не просрочен и не скрыт компанией. Иначе None."""
     def top_k(self, company_id: str, k: int, now: Optional[datetime] = None) -> list[BannerDTO]: ...
     def mark_seen(self, company_id: str, banner_id: str) -> None: ...
     def suppress(self, company_id: str, banner_id: str, reason: str) -> None: ...
@@ -85,6 +87,11 @@ class Publisher(Protocol):
 @runtime_checkable
 class SummaryBranch(Protocol):
     """Публичный вход ветки для оркестратора."""
+    def handle(self, req: SummaryRequest) -> list[BannerDTO] | ChatAnswer:
+        """Единственный вызов оркестратора: по `req.mode` отдаёт готовые баннеры компании или ответ чата.
+
+        Проверка качества и повтор генерации внутри ветки; оркестратор результат не оценивает.
+        """
     def handle_banner(self, req: SummaryRequest) -> list[Banner]:
         """Предрасчёт: по одному баннеру на кластер из батча (после порога уверенности) для каждой компании сегмента."""
     def handle_chat(self, req: SummaryRequest) -> ChatAnswer: ...

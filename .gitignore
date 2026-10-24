@@ -4,3 +4,8 @@ __pycache__/
 .pytest_cache/
 .env
 *.docx
+# локальное хранилище баннеров (SQLite, WAL)
+data/
+*.db
+*.db-wal
+*.db-shm

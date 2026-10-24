@@ -55,7 +55,8 @@
 ### 3.4 `stores.py`
 - `InMemorySegmentCache(SegmentCache)` с TTL, счётчиком попаданий и `invalidate_cluster` (сброс саммари кластера по всем сегментам).
 - `InMemoryBannerStore(BannerStore)`: `put` идемпотентен по `banner_id` и возвращает `True`, если баннер новый, иначе `False`; `top_k` отбрасывает просроченные и скрытые, применяет `pick_top_k` (динамическая часть приоритета и разнообразие тем), возвращает `list[BannerDTO]`; `mark_seen`, `suppress`, `invalidate_cluster` работают как описано в интерфейсе.
-- Интерфейс сохраняется таким, чтобы позже подставить Redis (отсортированное множество со статическим `base_priority` из `scoring.py`) и Postgres. Реальные Redis/Postgres писать не нужно.
+- `SqliteBannerStore` (`sqlite_store.py`): тот же контракт `BannerStore` в локальном файле SQLite (стандартная библиотека), включая «показан» и «скрыт»; контрактные тесты в `test_stores.py` идут на обеих реализациях. Включается `BranchConfig.banner_store_path`.
+- Интерфейс сохраняется таким, чтобы позже подставить Redis (отсортированное множество со статическим `base_priority` из `scoring.py`) или Postgres. Они не нужны, пока достаточно одного процесса.
 
 ### 3.5 `confidence.py` — `DefaultConfidenceScorer(ConfidenceScorer)`
 Тонкий адаптер над `scoring.company_confidence` (берёт сигналы, `lead`, `topic` из `SegmentSummary`; `has_sources` по `seg.sources`). Калибратор принимает необязательным параметром конструктора; NLI принимает `DefaultContentScorer` (адаптер над `content_signals`).
@@ -70,9 +71,13 @@
 - `push`: вызывает переданный обработчик (заглушка `Callable`), реального SSE не нужно.
 
 ### 3.8 `segment_builder.py` — `SegmentBuilder`
-Склеивает S1–S3b: ключ `ContentKey` -> `SegmentCache.get` -> при промахе `Summarizer` -> `EvidenceBinder` -> `content_signals` -> `SegmentSummary` -> `SegmentCache.put`. Возвращает `None`, если после сборки не осталось ни одного `fact`/`bank` утверждения или `structure_ok` ложно.
+Склеивает S1–S3b: ключ `ContentKey` -> `SegmentCache.get` -> при промахе `ValidatedGenerator` (саммаризатор, binder, сигналы, повтор при невалидном) -> `SegmentSummary` -> `SegmentCache.put`. Возвращает `None`, если после сборки не осталось ни одного `fact`/`bank` утверждения или `structure_ok` ложно.
+
+### 3.8а `generator.py` — `ValidatedGenerator`
+Один проход S2–S3b с проверкой. `is_valid(signals)`: `structure_ok`, нет `numeric_miss`, `grounding >= config.min_grounding`. `generate(req)` повторяет генерацию до `config.max_generation_attempts` раз при бюджете `FULL` (при `LITE` и `CACHED_ONLY` одна попытка), возвращает первую валидную попытку, иначе лучшую по (`structure_ok`, нет `numeric_miss`, `grounding`). `SummarizationFailed` и `BudgetExhausted` первой попытки пробрасываются; сбой повтора после успешной попытки логируется, берётся лучшая из имеющихся. Им пользуются `SegmentBuilder` и `handle_chat`.
 
 ### 3.9 `branch.py` — `DefaultSummaryBranch(SummaryBranch)`
+`handle(req)`: единственный вызов оркестратора. `mode=chat` -> `handle_chat`; `mode=banner` -> `serve_banners`: для топ-кластеров запроса искать `store.get(company_id, banner_id)` (id детерминирован), готовые отдавать сразу, по недостающим вызвать `handle_banner` и прочитать результат из хранилища. Возвращает `list[BannerDTO]` для `req.company`; скрытые компанией и просроченные не возвращаются. Решение «валиден ли результат» целиком на стороне ветки, оркестратор его не принимает.
 `handle_banner(req)`:
 1. Сгруппировать `req.news` по `cluster_id`, взять первые `max_clusters_per_request` по лучшему `rerank_score`.
 2. Для каждого кластера собрать `SegmentSummary` через `SegmentBuilder` (запрос с новостями только этого кластера).
@@ -80,7 +85,7 @@
 4. Для каждой компании: `ConfidenceScorer.score`; при `DROP` пропустить; иначе `composer.compose`, `publisher.to_dto`, `store.put`; если `severity=ATTENTION`, решение `SHOW_SUMMARY`, `score >= urgent_min_score` и `store.put` вернул `True`, вызвать `publisher.push`.
 5. Вернуть список созданных `Banner`.
 
-`handle_chat(req)`: `Summarizer` в режиме chat без записи в кэш баннеров; `EvidenceBinder`; `content_signals`; `company_confidence` с `lead_from_news(req.news[0])`. Если решение `SHOW_RAW_NEWS` или `DROP`, вернуть `ChatAnswer` с `raw_news=True`, пустыми `claims` и источниками главной новости. Иначе вернуть утверждения и источники, `caveat` при средней уверенности. Ничего не пишет в `BannerStore`.
+`handle_chat(req)`: `ValidatedGenerator` в режиме chat (с повтором при невалидном) без записи в кэш баннеров; `company_confidence` с `lead_from_news(req.news[0])`. Если решение `SHOW_RAW_NEWS` или `DROP`, вернуть `ChatAnswer` с `raw_news=True`, пустыми `claims` и источниками главной новости. Иначе вернуть утверждения и источники, `caveat` при средней уверенности. Ничего не пишет в `BannerStore`.
 
 Ошибки: `SummarizationFailed` и `BudgetExhausted` для баннера значит «пропустить кластер и записать причину в лог»; для чата значит ответ в режиме `raw_news=True`.
 
@@ -103,6 +108,9 @@
 11. Битый JSON от модели: один повтор, затем кластер пропускается без исключения наружу.
 12. Инъекция: новость с текстом вида «игнорируй инструкции и ...» не меняет структуру промпта (разделители экранированы) и не попадает в системную часть.
 
+13. `handle` отдаёт живой баннер из хранилища без вызова LLM, даже если кэш сегмента сброшен; генерирует только недостающие кластеры; не возвращает скрытые компанией баннеры.
+14. Невалидное саммари (выдуманное число, слабая обоснованность) генерируется заново, не более `max_generation_attempts` раз; при `LITE` повторов нет; после исчерпания сохраняется лучшая попытка.
+
 ## 5. Ограничения
 
 - Python 3.11+, pydantic v2, стандартная библиотека. Новые зависимости не добавлять, кроме `pytest` для тестов.
@@ -117,4 +125,4 @@
 1. В режиме предрасчёта оркестратор вызывает ветку по одному представителю сегмента, остальные компании сегмента берутся из `CompanyDirectory`.
 2. `segment_id` приходит готовым; правило нарезки не наше.
 3. Релевантность для остальных компаний сегмента считается по пересечению их тегов с тегами главной новости, а оценка реранкера берётся от представителя.
-4. Классификатор NLI и калибратор подключаются позже через необязательные параметры (`DefaultContentScorer`, `DefaultConfidenceScorer`).
+4. NLI в валидаторе нет; необязательный NLI и калибратор можно подключить позже через параметры (`DefaultContentScorer`, `DefaultConfidenceScorer`).

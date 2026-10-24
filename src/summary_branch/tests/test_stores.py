@@ -3,7 +3,26 @@ from datetime import timedelta
 from summary_branch.models import (
     Banner, BannerDTO, ContentKey, Decision, Severity, utcnow,
 )
+import pytest
+
+from summary_branch.sqlite_store import SqliteBannerStore
 from summary_branch.stores import InMemoryBannerStore, InMemorySegmentCache
+
+
+@pytest.fixture(params=["memory", "sqlite"])
+def new_store(request, tmp_path):
+    """Один набор тестов на оба хранилища: контракт BannerStore должен выполняться одинаково."""
+    stores = []
+
+    def make():
+        store = InMemoryBannerStore() if request.param == "memory" else SqliteBannerStore(tmp_path / "banners.db")
+        stores.append(store)
+        return store
+
+    yield make
+    for store in stores:
+        if isinstance(store, SqliteBannerStore):
+            store.close()
 
 
 
@@ -33,32 +52,32 @@ def ids(dtos):
     return [d.banner_id for d in dtos]
 
 
-def test_top_k_skips_expired_and_suppressed():
-    store = InMemoryBannerStore()
+def test_top_k_skips_expired_and_suppressed(new_store):
+    store = new_store()
     put(store, banner("ok", topic="rate"), banner("old", topic="fx", expires_in_h=-1),
         banner("hidden", topic="labor"))
     store.suppress("co1", "hidden", "не про меня")
     assert ids(store.top_k("co1", 3)) == ["ok"]
 
 
-def test_top_k_diversifies_topics_when_alternatives_exist():
-    store = InMemoryBannerStore()
+def test_top_k_diversifies_topics_when_alternatives_exist(new_store):
+    store = new_store()
     put(store, banner("r1", "rate"), banner("r2", "rate"), banner("r3", "rate"),
         banner("l1", "labor", severity=Severity.WATCH, confidence=0.8))
     result = ids(store.top_k("co1", 3))
     assert "l1" in result and len(result) == 3
 
 
-def test_mark_seen_lowers_priority():
-    store = InMemoryBannerStore()
+def test_mark_seen_lowers_priority(new_store):
+    store = new_store()
     put(store, banner("a", "rate", confidence=0.95), banner("b", "labor", confidence=0.9))
     assert ids(store.top_k("co1", 1)) == ["a"]
     store.mark_seen("co1", "a")
     assert ids(store.top_k("co1", 1)) == ["b"]
 
 
-def test_put_is_idempotent_and_keeps_state():
-    store = InMemoryBannerStore()
+def test_put_is_idempotent_and_keeps_state(new_store):
+    store = new_store()
     b = banner("a")
     put(store, b, b)
     assert ids(store.top_k("co1", 3)) == ["a"]
@@ -67,8 +86,8 @@ def test_put_is_idempotent_and_keeps_state():
     assert store.top_k("co1", 3) == []
 
 
-def test_put_returns_true_only_for_new_banner_id():
-    store = InMemoryBannerStore()
+def test_put_returns_true_only_for_new_banner_id(new_store):
+    store = new_store()
     b = banner("a")
     assert store.put(b, dto(b)) is True
     assert store.put(b, dto(b)) is False
@@ -77,15 +96,15 @@ def test_put_returns_true_only_for_new_banner_id():
     assert store.put(b, dto(b)) is True                                # после снятия снова новый
 
 
-def test_top_k_is_isolated_per_company():
-    store = InMemoryBannerStore()
+def test_top_k_is_isolated_per_company(new_store):
+    store = new_store()
     put(store, banner("a", company="co1"), banner("b", company="co2"))
     assert ids(store.top_k("co2", 3)) == ["b"]
     assert store.top_k("nobody", 3) == []
 
 
-def test_invalidate_cluster_removes_for_all_companies_and_counts():
-    store = InMemoryBannerStore()
+def test_invalidate_cluster_removes_for_all_companies_and_counts(new_store):
+    store = new_store()
     put(store, banner("a", company="co1", cluster="c1"), banner("b", company="co2", cluster="c1", topic="fx"),
         banner("c", company="co1", cluster="c2", topic="labor"))
     assert store.invalidate_cluster("c1", "новое событие") == 2
@@ -116,8 +135,8 @@ def _summary(k):
                           severity=Severity.WATCH, claims=[], sources=[], lead=lead, signals=signals)
 
 
-def test_put_returns_false_for_suppressed_banner_so_it_is_not_pushed():
-    store = InMemoryBannerStore()
+def test_put_returns_false_for_suppressed_banner_so_it_is_not_pushed(new_store):
+    store = new_store()
     b = banner("a")
     put(store, b)
     store.suppress("co1", "a", "не про меня")
@@ -126,8 +145,8 @@ def test_put_returns_false_for_suppressed_banner_so_it_is_not_pushed():
     assert store.top_k("co1", 3) == []
 
 
-def test_invalidate_cluster_resets_seen_state():
-    store = InMemoryBannerStore()
+def test_invalidate_cluster_resets_seen_state(new_store):
+    store = new_store()
     put(store, banner("a", "rate", confidence=0.95), banner("b", "labor", confidence=0.9))
     store.mark_seen("co1", "a")
     assert ids(store.top_k("co1", 1)) == ["b"]
@@ -136,8 +155,8 @@ def test_invalidate_cluster_resets_seen_state():
     assert ids(store.top_k("co1", 1)) == ["a"]  # свежий баннер не наследует штраф за «просмотрено»
 
 
-def test_returned_objects_are_copies():
-    store = InMemoryBannerStore()
+def test_returned_objects_are_copies(new_store):
+    store = new_store()
     put(store, banner("a"))
     store.top_k("co1", 1)[0].headline = "испорчено"
     assert store.top_k("co1", 1)[0].headline == "a"
@@ -153,12 +172,12 @@ def test_expired_banners_are_purged_on_put():
     store = InMemoryBannerStore()
     put(store, banner("old", expires_in_h=-1, topic="fx"))
     put(store, banner("fresh"))
-    assert "old" not in store._dtos and "old" not in store._banners["co1"]
+    assert ("co1", "old") not in store._dtos and "old" not in store._banners["co1"]
 
 
-def test_concurrent_access_does_not_break_store():
+def test_concurrent_access_does_not_break_store(new_store):
     from concurrent.futures import ThreadPoolExecutor
-    store = InMemoryBannerStore()
+    store = new_store()
 
     def worker(i):
         for j in range(200):
@@ -184,3 +203,35 @@ def test_segment_cache_invalidate_cluster_drops_all_segments_and_versions():
     assert cache.invalidate_cluster("c1") == 4
     assert all(cache.get(k) is None for k in keys) and cache.get(other) is not None
     assert cache.invalidate_cluster("c1") == 0
+
+
+def test_get_returns_only_live_visible_banner(new_store):
+    store = new_store()
+    put(store, banner("ok"), banner("old", expires_in_h=-1), banner("hidden"))
+    store.suppress("co1", "hidden", "не про меня")
+    assert store.get("co1", "ok").banner_id == "ok"
+    assert store.get("co1", "old") is None and store.get("co1", "hidden") is None
+    assert store.get("co1", "missing") is None and store.get("co2", "ok") is None
+
+
+def test_sqlite_store_survives_restart(tmp_path):
+    path = tmp_path / "nested" / "banners.db"
+    first = SqliteBannerStore(path)
+    put(first, banner("a", "rate", confidence=0.95), banner("b", "labor", confidence=0.9), banner("c", "fx"))
+    first.mark_seen("co1", "a")
+    first.suppress("co1", "c", "не про меня")
+    first.close()
+
+    second = SqliteBannerStore(path)
+    assert second.get("co1", "c") is None                       # скрытие пережило перезапуск
+    assert ids(second.top_k("co1", 1)) == ["b"]                 # «показан» тоже: a ушёл ниже
+    assert second.put(banner("a"), dto(banner("a"))) is False   # баннер уже есть, пушить не нужно
+    second.close()
+
+
+def test_sqlite_store_keeps_same_banner_id_separate_per_company(new_store):
+    store = new_store()
+    first, second = banner("a", company="co1"), banner("a", company="co2")
+    store.put(first, dto(first).model_copy(update={"headline": "first"}))
+    store.put(second, dto(second).model_copy(update={"headline": "second"}))
+    assert store.get("co1", "a").headline == "first" and store.get("co2", "a").headline == "second"
