@@ -33,7 +33,10 @@ docker compose run --rm ingest load-csv
 ```powershell
 docker compose run --rm ingest extract-pdfs --metadata data/reports-metadata.json
 Get-Content -Encoding utf8 data/processed/pdf/report.json
+docker compose run --rm ingest prepare-news
+docker compose run --rm ingest tag-chunks
 docker compose run --rm ingest load-pdfs
+docker compose run --rm ingest load-news
 docker compose run --rm ingest search "ключевая ставка"
 ```
 
@@ -54,9 +57,11 @@ Tesseract отдельно и передать путь через `--tesseract`
 
 ```powershell
 uv venv
-uv pip install -r requirements.txt
+uv pip install -r requirements.txt --torch-backend cpu
 .venv/Scripts/python.exe -m ingestion prepare-csv
 .venv/Scripts/python.exe -m ingestion extract-pdfs --metadata data/reports-metadata.json --tesseract "C:/Program Files/Tesseract-OCR/tesseract.exe"
+.venv/Scripts/python.exe -m ingestion prepare-news
+.venv/Scripts/python.exe -m ingestion tag-chunks
 $env:PGHOST = "localhost"
 $env:PGPORT = "5432"
 $env:PGDATABASE = "insights"
@@ -65,6 +70,7 @@ $env:PGPASSWORD = "пароль из .env"
 .venv/Scripts/python.exe -m ingestion init-db
 .venv/Scripts/python.exe -m ingestion load-csv
 .venv/Scripts/python.exe -m ingestion load-pdfs
+.venv/Scripts/python.exe -m ingestion load-news
 ```
 
 Вместо `PG*` поддерживается `DATABASE_URL`. Локальный Python сам `.env` не читает;
@@ -135,7 +141,7 @@ CSV читаются потоково с `utf-8-sig` и разделителем
 Файл `data/reports-metadata.json` содержит названия и вручную проверенные даты.
 Неизвестные даты остаются null. Месяц в заголовке обзора не считается датой публикации.
 Материал 2021 года сохраняется с собственной датой. После изменения метаданных
-повторите extract-pdfs и load-pdfs; готовые страницы будут взяты из кэша.
+повторите extract-pdfs, tag-chunks и load-pdfs; готовые страницы будут взяты из кэша.
 
 Оценка OCR — качество распознавания символов, а не проверка истинности утверждений.
 Tesseract может ошибаться в колонках, знаках %, десятичных разделителях, таблицах
@@ -144,6 +150,10 @@ Tesseract может ошибаться в колонках, знаках %, д�
 структуры или мультимодальной модели. Чанки пока не разделяются на факт/прогноз/мнение.
 
 ## Что получают коллеги
+
+Подготовка JSONL и теги для PDF/новостей описаны в [tagging.md](tagging.md).
+Загрузчики документов по умолчанию читают `data/processed/tagged/pdf/` и
+`data/processed/tagged/news/`, созданные командой `tag-chunks`.
 
 | Таблица/представление | Назначение |
 |---|---|
