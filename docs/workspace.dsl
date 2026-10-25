@@ -1,11 +1,13 @@
 /*
  * Альфа Инсайты: C4, упрощённая версия (один конвейер на одной схеме).
- * Допущение: «Jev» = LLM-judge, оценка уверенности ответа.
+ * Оркестратор только просит у ветки саммари баннеры или ответ чата (по типу запроса) и отдаёт их клиенту.
+ * Проверку качества и повтор генерации делает сама ветка: готовый валидный баннер из локального хранилища
+ * отдаётся сразу, иначе генерация -> валидация (числа, источники, обоснованность, без LLM) -> повтор или сохранение.
  *
  * Виды:
  *   01-context     кто и с чем взаимодействует
  *   02-containers  из каких частей состоит система
- *   03-pipeline    главная схема: новость -> база -> запрос -> поиск -> ранжирование -> саммари -> Jev -> выдача
+ *   03-pipeline    главная схема: новость -> база -> запрос -> поиск -> ранжирование -> ветка саммари (хранилище -> генерация -> валидация -> сохранение) -> оркестратор -> выдача
  *
  * Полная версия с 40 компонентами лежит в workspace-full.dsl.
  */
@@ -28,14 +30,15 @@ workspace "Альфа Инсайты" "Новости + аналитика ба�
                 classifier = component "Классификатор" "теги и отрасль" "scikit-learn"
                 embedder = component "Эмбеддер" "векторы, индекс" "OSS-эмбеддер"
 
-                queryBuilder = component "Запрос" "теги компании или вопрос чата" "Python"
                 retriever = component "Retriever" "BM25 + векторы" "pgvector"
                 ranker = component "Реранкер" "под профиль компании" "cross-encoder"
                 profile = component "Профиль и граф" "признаки компании" "Python"
-                orchestrator = component "Оркестратор" "LangGraph" "LangGraph"
-                summarizer = component "Саммари LLM" "что и для кого" "LLM"
-                claims = component "Claims и ссылки" "факт, банк, вывод, гипотеза" "Python"
-                jev = component "Jev: уверенность" "LLM-judge" "LLM" "Judge"
+                orchestrator = component "Оркестратор" "просит у ветки баннер или ответ по типу запроса, отдаёт клиенту" "LangGraph"
+                branch = component "Ветка саммари" "handle(): баннеры или ответ чата по типу запроса" "Python"
+                bannerStore = component "Хранилище баннеров" "локальное; баннеры по компаниям" "in-memory"
+                summarizer = component "Саммаризатор" "кэш сегмента, один вызов LLM на кластер" "LLM"
+                claims = component "Claims и ссылки" "факт, банк, вывод, гипотеза; баннер на каждый кластер" "Python"
+                validator = component "Валидатор уверенности" "числа, обоснованность, источники, свежесть, применимость к компании по профилю; без LLM" "Python" "Judge"
             }
         }
 
@@ -45,7 +48,7 @@ workspace "Альфа Инсайты" "Новости + аналитика ба�
         core -> db "Читает и пишет"
         news -> core "Новости"
         bankDocs -> core "PDF банка"
-        core -> llm "Саммари и судья"
+        core -> llm "Саммари"
 
         # конвейер
         news -> sanitizer "Новости"
@@ -53,17 +56,22 @@ workspace "Альфа Инсайты" "Новости + аналитика ба�
         classifier -> embedder "Теги"
         embedder -> db "Векторы и теги"
 
-        ui -> queryBuilder "Вопрос чата или баннер"
-        queryBuilder -> retriever "Запрос"
+        ui -> orchestrator "Вопрос чата или запуск баннеров"
+        orchestrator -> retriever "Запрос: теги компании или вопрос"
         db -> retriever "Кандидаты"
         retriever -> ranker "Кандидаты"
         profile -> ranker "Признаки компании"
         ranker -> orchestrator "Топ-K"
-        orchestrator -> summarizer "Новости + профиль"
+        orchestrator -> branch "Баннер или ответ (по типу запроса): новости + профиль компании и пользователя (ОКВЭД, продукты, ВЭД, платежи агрегатами)"
+        branch -> bannerStore "Есть готовый баннер?"
+        bannerStore -> branch "Да: отдаём сразу"
+        branch -> summarizer "Нет: генерация"
         summarizer -> claims "Черновик"
-        claims -> jev "Утверждения + источники"
-        jev -> ui "Высокая: резюме"
-        jev -> orchestrator "Низкая: повтор или сама новость"
+        claims -> validator "Утверждения + источники"
+        validator -> summarizer "Невалидно: повтор генерации"
+        validator -> bannerStore "Валидно (или лучшее после повторов): сохранение"
+        branch -> orchestrator "Баннеры или ответ"
+        orchestrator -> ui "Отдаёт клиенту"
         summarizer -> llm "Запрос к модели"
     }
 
@@ -81,7 +89,7 @@ workspace "Альфа Инсайты" "Новости + аналитика ба�
         component core "03-pipeline" "Главная схема: от новости до выдачи" {
             include news db ui
             include sanitizer classifier embedder
-            include queryBuilder retriever ranker profile orchestrator summarizer claims jev
+            include retriever ranker profile orchestrator branch bannerStore summarizer claims validator
             autolayout tb 80 60
         }
 

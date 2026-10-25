@@ -17,6 +17,18 @@ __pycache__/
 /data/processed/
 /data/cache/
 
+# Local banner store (SQLite, WAL)
+*.db
+*.db-wal
+*.db-shm
+
+# Raw evaluation runs; REPORT.md stays
+eval/results/*.jsonl
+eval/results/*.json
+
+# Local working documents
+*.docx
+
 # Local database backups
 *.dump
 *.backup
