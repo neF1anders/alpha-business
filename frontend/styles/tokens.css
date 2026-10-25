@@ -1,0 +1,44 @@
+/* Figma variables `alfa/color` (file vjxsTW9WiBgu2OuJo2EJKM). */
+:root {
+  --bg-page: #f1f2f4;
+  --bg-surface: #ffffff;
+  --bg-muted: #e8e9ec;
+  --bg-chip: #eef0f3;
+  --line-default: #e3e4e8;
+
+  --text-primary: #1f1f22;
+  --text-secondary: #8d8f94;
+  --text-inverse: #ffffff;
+
+  --brand-red: #ef3124;
+  --brand-blue: #2688eb;
+  --brand-blue-soft: #e3f0ff;
+  --brand-purple: #5b4fd6;
+  --brand-purple-soft: #e8e6ff;
+
+  --sev-attention: #ef3124;
+  --sev-attention-soft: #fde7e5;
+  --sev-watch: #e89a0c;
+  --sev-watch-soft: #fff1d6;
+  --sev-opportunity: #1fa463;
+  --sev-opportunity-soft: #ddf4e7;
+
+  --assistant-gradient: linear-gradient(135deg, #f03024 0%, #ff7359 71.4%);
+
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --drawer-width: 380px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 160ms;
+  --dur: 280ms;
+  --dur-slow: 420ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur: 1ms;
+    --dur-slow: 1ms;
+  }
+}
