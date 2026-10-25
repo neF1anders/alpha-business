@@ -116,7 +116,7 @@ def load_pdfs(directory):
 
 
 def load_news(directory):
-    from .news_data import artifact_paths
+    from .news_documents import artifact_paths
     paths = artifact_paths(directory)
     if not paths:
         raise ValueError('No prepared news articles')

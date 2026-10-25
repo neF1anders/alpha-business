@@ -104,3 +104,42 @@ FROM insights.document_chunks c
 JOIN insights.documents d USING(document_id)
 JOIN insights.document_pages p USING(document_id,page_number)
 WHERE NOT p.needs_review;
+
+-- Audited news snapshots and immutable source articles. Independent of bank PDFs.
+CREATE TABLE IF NOT EXISTS insights.news_imports (
+    import_sha256 text PRIMARY KEY CHECK (import_sha256 ~ '^[0-9a-f]{64}$'),
+    source_path text NOT NULL,
+    row_count integer NOT NULL CHECK (row_count > 0),
+    report jsonb NOT NULL,
+    audit jsonb NOT NULL,
+    loaded_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS insights.news_articles (
+    news_id text PRIMARY KEY,
+    url text NOT NULL UNIQUE,
+    title text NOT NULL,
+    text text NOT NULL CHECK (length(text) >= 200),
+    source text NOT NULL,
+    source_kind text NOT NULL CHECK (source_kind IN ('primary', 'media', 'bank')),
+    published_at timestamptz NOT NULL,
+    event_at timestamptz,
+    fetched_at timestamptz NOT NULL,
+    text_sha256 text NOT NULL UNIQUE CHECK (text_sha256 ~ '^[0-9a-f]{64}$'),
+    categories text[] NOT NULL DEFAULT '{}',
+    source_record jsonb NOT NULL,
+    raw_receipt jsonb NOT NULL,
+    first_import_sha256 text NOT NULL REFERENCES insights.news_imports(import_sha256),
+    search_vector tsvector GENERATED ALWAYS AS (
+        setweight(to_tsvector('russian', title), 'A') ||
+        setweight(to_tsvector('russian', text), 'B')
+    ) STORED
+);
+CREATE INDEX IF NOT EXISTS news_search ON insights.news_articles USING gin(search_vector);
+CREATE INDEX IF NOT EXISTS news_published ON insights.news_articles(published_at DESC);
+CREATE TABLE IF NOT EXISTS insights.news_import_items (
+    import_sha256 text NOT NULL REFERENCES insights.news_imports(import_sha256),
+    news_id text NOT NULL REFERENCES insights.news_articles(news_id),
+    PRIMARY KEY (import_sha256, news_id)
+);
+COMMENT ON TABLE insights.news_articles IS
+    'Extracted publications, not event clusters or company relevance labels. Original source_record retained.';

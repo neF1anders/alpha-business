@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from .common import sha256, write_json
-from .news_data import artifact_paths
+from .news_documents import artifact_paths
 from .taxonomy import (COUNTRY_ALIASES, EXTRA_COUNTRIES, FACTORS, FACTOR_PATTERNS,
                        REGION_ALIASES, SECTORS)
 

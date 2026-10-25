@@ -30,5 +30,24 @@ services:
       db:
         condition: service_healthy
     profiles: [tools]
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.orchestrator
+    ports:
+      - "127.0.0.1:${ORCHESTRATOR_PORT:-8000}:8000"
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: insights
+      PGUSER: insights
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      REPORTS_PATH: /app/data/raw/reports
+    volumes:
+      - ./data/processed/company_tags.csv:/app/data/processed/company_tags.csv:ro
+      - ${REPORTS_PATH:-./data/raw/reports}:/app/data/raw/reports:ro
+    depends_on:
+      db:
+        condition: service_healthy
 volumes:
   insights-db:
