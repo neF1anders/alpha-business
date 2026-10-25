@@ -1,10 +1,21 @@
 import argparse
 import json
 import sys
+from pathlib import Path
 from collections import Counter
 
 from .csv_data import prepare_csv
 from .pdf_data import extract_pdfs
+
+
+def news_format(source, requested='auto'):
+    if requested != 'auto':return requested
+    root=Path(source)
+    chunk_manifest=(root/'manifest.json').is_file()
+    snapshot=(root/'report.json').is_file() and (root/'news.jsonl').is_file()
+    if chunk_manifest == snapshot:
+        raise ValueError('Cannot determine news format; use --format chunks or --format snapshot')
+    return 'chunks' if chunk_manifest else 'snapshot'
 
 
 def main():
@@ -43,9 +54,12 @@ def main():
     tag.add_argument('--batch-size', type=int, default=32)
     tag.add_argument('--cache-dir', default='data/cache')
     commands.add_parser('init-db', help='Create the insights schema and indexes')
-    for name, directory in [('load-csv', 'csv'), ('load-pdfs', 'tagged/pdf'), ('load-news', 'tagged/news')]:
+    for name, directory in [('load-csv', 'csv'), ('load-pdfs', 'tagged/pdf')]:
         load = commands.add_parser(name)
         load.add_argument('--source', default=f'data/processed/{directory}')
+    news = commands.add_parser('load-news', help='Load a prepared chunk manifest or an audited news snapshot')
+    news.add_argument('--source', default='data/processed/tagged/news')
+    news.add_argument('--format', choices=['auto','chunks','snapshot'], default='auto')
     find = commands.add_parser('search', help='Smoke-test full-text retrieval')
     find.add_argument('query')
     find.add_argument('--limit', type=int, default=5)
@@ -77,8 +91,13 @@ def main():
         elif args.command == 'load-pdfs':
             result = database.load_pdfs(args.source)
         elif args.command == 'load-news':
-            loaded = database.load_news(args.source)
-            result = {'documents': len(loaded), 'statuses': dict(Counter(item['status'] for item in loaded))}
+            format_ = news_format(args.source, args.format)
+            if format_ == 'snapshot':
+                from .news_database import load_news
+                result = load_news(args.source)
+            else:
+                loaded = database.load_news(args.source)
+                result = {'documents': len(loaded), 'statuses': dict(Counter(item['status'] for item in loaded))}
         else:
             if args.limit < 1 or args.limit > 100:
                 parser.error('--limit must be between 1 and 100')

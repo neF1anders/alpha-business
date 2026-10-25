@@ -1,0 +1,23 @@
+Local semantic-search addition (2026-10-24)
+
+Model: intfloat/multilingual-e5-small
+Revision: 614241f622f53c4eeff9890bdc4f31cfecc418b3
+Model license declared by its publisher: MIT
+Publisher/model card: https://huggingface.co/intfloat/multilingual-e5-small
+Technical report: https://arxiv.org/abs/2402.05672
+Weights are downloaded into the user's Hugging Face cache, not committed to this repository.
+No remote model code is enabled. Inference runs locally; news/company data are not
+sent to the model publisher or a hosted inference service.
+
+Runtime libraries for this optional component are pinned in requirements-semantic.txt.
+PyTorch, Transformers, Hugging Face Hub, safetensors and NumPy remain subject to their
+respective distributed license notices. This entry covers the semantic-search addition;
+a complete third-party inventory for the whole team submission remains to be assembled.
+
+Optional local pair reranker (2026-10-24)
+Model: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+Revision: 1427fd652930e4ba29e8149678df786c240d8825
+Model license declared by its publisher: Apache-2.0
+Publisher/model card: https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+Downloaded as safetensors into the standard HF cache, with remote code disabled.
+No extra runtime dependencies beyond requirements-semantic.txt; inference is offline.

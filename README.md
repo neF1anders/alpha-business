@@ -1,5 +1,18 @@
 # Альфа Инсайты: данные для RAG и архитектура
 
+## Новостной ретривер и оркестратор
+
+Рабочий API использует новости из PostgreSQL вместо демонстрационной выдачи.
+Лексический режим включён по умолчанию. Для персональной ленты доступен
+`NEWS_SEARCH_MODE=local_semantic`: локальные E5-эмбеддинги, объединение кандидатов
+с FTS и cross-encoder. Вопросы чата пока обрабатываются лексически.
+
+[Настройка, контракт, ограничения и проверка](docs/retrieval.md).
+Нужна таблица `insights.news_articles`: загрузка старого JSONL в `rag_chunks`
+не заполняет её. Проверенный новостной snapshot передаётся команде отдельно;
+корпус, локальная БД, модели и результаты экспериментов в этот PR не входят.
+
+
 Репозиторий содержит исходные обезличенные CSV, аналитические PDF Альфа-Банка, новости JSONL,
 скрипты очистки/OCR и загрузки в PostgreSQL, а также описание архитектуры C4.
 Каждый участник собирает свою локальную БД из исходных файлов. Дамп не требуется.
@@ -318,8 +331,12 @@ docker compose run --rm ingest load-news
 Проверка обработчика, настоящего OCR и БД (создаётся отдельная временная тестовая БД):
 
 ```powershell
-docker compose run --rm -e RUN_DB_TESTS=1 --entrypoint python ingest -m unittest discover -s tests -v
+docker compose run --rm -e RUN_DB_TESTS=1 --entrypoint python ingest -m unittest tests.test_ingestion tests.test_database tests.test_news_tagging tests.test_news_data tests.test_news_archive tests.test_news_database -v
 ```
+
+Полный набор с API и семантическим ретривером запускается в Python-окружении
+по [инструкции retrieval](docs/retrieval.md#проверка): минимальный образ ingest
+не содержит зависимостей API.
 
 Подробности очистки, OCR и схемы: [docs/ingestion.md](docs/ingestion.md).
 

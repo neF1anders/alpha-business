@@ -10,6 +10,8 @@
 """
 import argparse
 from pathlib import Path
+import tempfile
+import os
 
 import pandas as pd
 
@@ -103,16 +105,31 @@ def build_tags(p: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--from-db", action="store_true", help="Build directly from PostgreSQL without an intermediate profiles.csv")
     parser.add_argument("--profiles", default=Path("data/processed/profiles.csv"), type=Path)
     parser.add_argument("--out-dir", default=Path("data/processed"), type=Path)
     args = parser.parse_args()
 
-    profiles = pd.read_csv(args.profiles, dtype={"okved_division": str, "mainokved_code": str})
+    if args.from_db:
+        from scripts.build_profiles import load_companies, clean_companies, add_group_features
+        profiles = add_group_features(clean_companies(load_companies()))
+    else:
+        profiles = pd.read_csv(args.profiles, dtype={"okved_division": str, "mainokved_code": str})
     tags = build_tags(profiles)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     out = args.out_dir / "company_tags.csv"
-    tags.to_csv(out, index=False, encoding="utf-8")
+    # Atomic replacement and private permissions for derived company data.
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=out.parent,
+                                         prefix=".company-tags-", delete=False) as stream:
+            temporary = Path(stream.name)
+            tags.to_csv(stream, index=False)
+        os.replace(temporary, out)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
     per_company = tags.groupby("synthetic_u").size()
     print(f"Компаний: {len(profiles)}, с тегами: {len(per_company)}, пар (компания, тег): {len(tags)}")

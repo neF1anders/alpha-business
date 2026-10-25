@@ -1,5 +1,6 @@
 """Opt-in PostgreSQL tests: create and drop a separate, random test database."""
 import csv
+from datetime import datetime
 import json
 import os
 import tempfile
@@ -13,7 +14,7 @@ from psycopg import sql
 
 from ingestion import database
 from ingestion.common import write_json, sha256
-from ingestion.news_data import prepare_news, artifact_paths
+from ingestion.news_documents import prepare_news, artifact_paths
 from ingestion.csv_data import COMPANY_COLUMNS, LINK_COLUMNS, PAYMENT_COLUMNS, SOURCES, prepare_csv
 
 
@@ -129,7 +130,7 @@ class DatabaseTests(unittest.TestCase):
             with database.connect() as conn:
                 row = conn.execute('SELECT source_type,external_id,publisher,published_at_timestamp FROM insights.documents WHERE external_id=%s', ('test-news',)).fetchone()
                 self.assertEqual(row[:3], ('news','test-news','Test Publisher'))
-                self.assertEqual(row[3].utcoffset().total_seconds(), 0)
+                self.assertEqual(row[3], datetime.fromisoformat(raw['published_at']))
 
 
 if __name__ == '__main__':

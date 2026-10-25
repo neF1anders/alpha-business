@@ -10,7 +10,7 @@ from typing import Optional
 
 from .models import CompanyProfile, NewsItem, RankedNews, SourceKind, utcnow
 
-# Вес совпадения тега по пространствам: вероятность, что событие существенно для компании.
+# Эвристические веса тегов; не вероятности влияния на компанию.
 NAMESPACE_WEIGHT = {"factor": 0.7, "sector": 0.5, "okved": 0.4, "country": 0.3, "region": 0.2}
 
 # (тег новости, тег компании, вес): модификаторы по продуктам и масштабу.
@@ -53,6 +53,9 @@ class TagReranker:
 
     def _score(self, profile: CompanyProfile, item: NewsItem, now: datetime,
                require_tag_match: bool) -> Optional[RankedNews]:
+        from .news_quality import historical_retrospective
+        if item.published_at > now or (require_tag_match and historical_retrospective(item.title, item.text, now)):
+            return None
         matched = sorted(item.tags & profile.tags)
         miss = 1.0
         used: list[str] = []

@@ -11,7 +11,7 @@ from orchestrator.config import Settings
 from orchestrator.domain.ranking import TagReranker
 from orchestrator.infrastructure.profiles_csv import CsvProfileRepository
 from orchestrator.infrastructure.sample_news import InMemoryNewsRetriever
-from orchestrator.main import build_container, create_default_app
+from orchestrator.main import build_container
 from orchestrator_support import FakeBranch
 
 TAGS = ["sector:trade", "size:mid", "factor:key_rate", "factor:consumer_demand", "product:credit", "region:Москва"]
@@ -33,7 +33,10 @@ class ApiTests(unittest.TestCase):
         cls.tmp.cleanup()
 
     def setUp(self):
-        self.client = TestClient(create_default_app(self.settings))
+        # Unit/API tests must not connect to the developer's real database.
+        container = build_container(CsvProfileRepository(self.settings.tags_path), InMemoryNewsRetriever(),
+                                    TagReranker(), FakeBranch(), Limits())
+        self.client = TestClient(create_app(container))
 
     def test_health(self):
         self.assertEqual(self.client.get("/health").json(), {"status": "ok"})
@@ -56,7 +59,9 @@ class ApiTests(unittest.TestCase):
     def test_chat(self):
         r = self.client.post("/v1/chat", json={"company_id": "U_1", "question": "Что со ставкой ЦБ?"})
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual({c["kind"] for c in r.json()["answer"]["claims"]}, {"fact", "bank", "model"})
+        self.assertEqual({c["kind"] for c in r.json()["answer"]["claims"]}, {"fact", "bank"})
+        self.assertTrue(r.json()["answer"]["raw_news"])
+        self.assertEqual(r.json()["answer"]["confidence"], 0)
 
     def test_profile_explains_segment_and_tags(self):
         body = self.client.get("/v1/companies/U_1/profile").json()

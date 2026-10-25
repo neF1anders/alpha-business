@@ -66,6 +66,21 @@ class NewsTests(unittest.TestCase):
             self.assertEqual(len(artifact_paths(root / 'out')), 1)
 
 
+class ImportRoutingTests(unittest.TestCase):
+    def test_explicit_formats_and_ambiguous_directory(self):
+        from ingestion.__main__ import news_format
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            self.assertEqual(news_format(root,'snapshot'),'snapshot')
+            with self.assertRaises(ValueError):news_format(root)
+            (root/'manifest.json').write_text('{}')
+            self.assertEqual(news_format(root),'chunks')
+            (root/'report.json').write_text('{}');(root/'news.jsonl').write_text('')
+            with self.assertRaises(ValueError):news_format(root)
+            (root/'manifest.json').unlink()
+            self.assertEqual(news_format(root),'snapshot')
+
+
 class TaggingTests(unittest.TestCase):
     def test_chunk_factors_and_canonical_geography(self):
         with tempfile.TemporaryDirectory() as tmp:

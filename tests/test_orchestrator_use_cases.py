@@ -63,6 +63,12 @@ class BannersTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.banners, ())
         self.assertIn("retriever", result.degraded[0])
 
+    async def test_dependency_details_are_not_exposed_to_client(self):
+        result = await build(GetBanners, retriever=FakeRetriever(error=RuntimeError("password=secret"))).execute(
+            BannersCommand("U_1"))
+        self.assertTrue(result.degraded)
+        self.assertNotIn("secret", " ".join(result.degraded))
+
     async def test_no_relevant_news_does_not_call_branch(self):
         branch = FakeBranch()
         result = await build(GetBanners, retriever=FakeRetriever(fresh([NEWS[2]])), branch=branch).execute(
@@ -78,7 +84,7 @@ class ChatTests(unittest.IsolatedAsyncioTestCase):
         req = branch.requests[0]
         self.assertEqual((req.mode, req.question, req.bank_materials), (Mode.CHAT, "Что со ставкой?", BANK))
         self.assertEqual(req.budget, BudgetTier.FULL)
-        self.assertFalse(result.answer.raw_news)
+        self.assertTrue(result.answer.raw_news)  # Template branch explicitly exposes source-only output.
         self.assertEqual([s.name for s in steps], [s.name for s in result.steps])
 
     async def test_chat_keeps_news_without_tag_match(self):
@@ -110,3 +116,48 @@ class ChatTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EventContextIntegrationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_event_retrieval_uses_selected_news_and_full_profile(self):
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock
+        from orchestrator.domain.models import BankMaterial
+        async def retrieve(item,profile,**kwargs):
+            return SimpleNamespace(news_id=item.news_id,status='background_found',topics=('rate',),
+                matched_company_tags=('factor:key_rate',),trace={},bank_materials=(
+                    BankMaterial('bank:shared','Report','Quote','/v1/materials/report',1,
+                                 news_ids=(item.news_id,)),))
+        events=SimpleNamespace(retrieve=AsyncMock(side_effect=retrieve))
+        branch=FakeBranch()
+        service=GetBanners(FakeProfiles(PROFILE),FakeRetriever(fresh(NEWS),BANK),TagReranker(),
+                          branch,Limits(),event_retriever=events)
+        result=await service.execute(BannersCommand('U_1'))
+        req=branch.requests[0]
+        self.assertEqual(events.retrieve.await_count,len(req.news))
+        self.assertTrue(all('product:credit' in call.args[1].tags for call in events.retrieve.await_args_list))
+        self.assertEqual(len(req.bank_materials),1)
+        self.assertEqual(set(req.bank_materials[0].news_ids),{r.item.news_id for r in req.news})
+        self.assertIn('event_context',[s.name for s in result.steps])
+
+    async def test_context_failure_keeps_news_but_drops_unrelated_legacy_evidence(self):
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock
+        events=SimpleNamespace(retrieve=AsyncMock(side_effect=RuntimeError('password=secret')))
+        branch=FakeBranch()
+        service=GetBanners(FakeProfiles(PROFILE),FakeRetriever(fresh(NEWS),BANK),TagReranker(),
+                          branch,Limits(),event_retriever=events)
+        result=await service.execute(BannersCommand('U_1'))
+        self.assertTrue(result.banners)
+        self.assertEqual(branch.requests[0].bank_materials,())
+        self.assertTrue(result.degraded)
+        self.assertNotIn('secret',' '.join(result.degraded))
+
+    async def test_summary_does_not_attach_another_events_bank_quote(self):
+        from orchestrator.infrastructure.template_branch import TemplateSummaryBranch
+        from orchestrator.domain.models import BankMaterial,SummaryRequest
+        ranked=TagReranker().rerank(PROFILE,fresh(NEWS),3)
+        wrong=BankMaterial('b','Wrong','Wrong quote','https://example.org',news_ids=('not-selected',))
+        req=SummaryRequest('trace',Mode.CHAT,PROFILE,tuple(ranked),(wrong,))
+        reply=await TemplateSummaryBranch().chat(req)
+        self.assertEqual([c.kind for c in reply.claims],['fact'])

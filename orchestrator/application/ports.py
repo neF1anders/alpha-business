@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, Protocol, runtime_checkable
 
 from ..domain.models import (
-    Banner, ChatAnswer, CompanyProfile, NewsItem, NewsQuery, RankedNews, RetrievalResult, SummaryRequest,
+    Banner, ChatAnswer, CompanyProfile, EventContext, NewsItem, NewsQuery, RankedNews, RetrievalResult, SummaryRequest,
 )
 
 
@@ -32,3 +32,10 @@ class SummaryBranch(Protocol):
     """Ветка саммари: кэш баннеров, генерация, валидация. Оркестратор результат не оценивает."""
     async def banners(self, req: SummaryRequest) -> list[Banner]: ...
     async def chat(self, req: SummaryRequest) -> ChatAnswer: ...
+
+
+@runtime_checkable
+class EventRetriever(Protocol):
+    """A concrete news event + company -> dated bank context and matching trace."""
+    async def retrieve(self, event: NewsItem, profile: CompanyProfile, *,
+                       as_of: Optional[datetime] = None, limit: int = 5) -> EventContext: ...

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -42,9 +42,10 @@ class CompanyProfile:
     tags: frozenset[str]                             # `пространство:значение`, см. docs/tags.md
     features: tuple[str, ...] = ()                   # человекочитаемые признаки для строки «для вас»
     role: str = "cfo"
+    activity: str = ""                             # confirmed source mainokved_name
 
     def with_role(self, role: str) -> "CompanyProfile":
-        return CompanyProfile(self.company_id, self.segment_id, self.tags, self.features, role)
+        return CompanyProfile(self.company_id, self.segment_id, self.tags, self.features, role, self.activity)
 
     def tags_in(self, *namespaces: str) -> frozenset[str]:
         return frozenset(t for t in self.tags if t.split(":", 1)[0] in namespaces)
@@ -71,6 +72,21 @@ class BankMaterial:
     claim_text: str
     url: str
     page: Optional[int] = None
+    news_ids: tuple[str, ...] = ()
+    published_at: Optional[date] = None
+
+
+@dataclass(frozen=True)
+class EventContext:
+    news_id: str
+    company_id: str
+    topics: tuple[str, ...]
+    event_tags: tuple[str, ...]
+    matched_company_tags: tuple[str, ...]
+    heuristic_score: float
+    bank_materials: tuple[BankMaterial, ...]
+    status: str
+    trace: dict
 
 
 @dataclass(frozen=True)
@@ -79,6 +95,9 @@ class NewsQuery:
     tags: frozenset[str]
     question: Optional[str] = None
     limit: int = 20
+    as_of: Optional[datetime] = None
+    published_after: Optional[datetime] = None
+    company: Optional[CompanyProfile] = None
 
 
 @dataclass(frozen=True)

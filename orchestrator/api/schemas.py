@@ -91,6 +91,7 @@ class ChatResponse(BaseModel):
 
 
 class ProfileOut(BaseModel):
+    activity: str = ""
     company_id: str
     segment_id: str
     features: list[str]
@@ -110,7 +111,7 @@ def chat_response(result: ChatResult, debug: bool) -> ChatResponse:
 
 
 def profile_out(p: CompanyProfile) -> ProfileOut:
-    return ProfileOut(company_id=p.company_id, segment_id=p.segment_id, features=list(p.features),
+    return ProfileOut(activity=p.activity, company_id=p.company_id, segment_id=p.segment_id, features=list(p.features),
                       tags=sorted(p.tags))
 
 

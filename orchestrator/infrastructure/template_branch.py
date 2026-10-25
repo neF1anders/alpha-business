@@ -38,25 +38,20 @@ class TemplateSummaryBranch:
                 label = f"{label} · {_FACTOR_LABEL[factor]}"
             out.append(Banner(
                 banner_id=f"{req.company.company_id}:{r.item.cluster_id}", severity=severity, label=label,
-                headline=r.item.title[:60], for_you=self._for_you(req), sources=_sources(r),
-                expires_at=utcnow() + timedelta(hours=36)))
+                headline=r.item.title, for_you="", sources=_sources(r),
+                expires_at=utcnow() + timedelta(hours=36), caveat=True, raw_news=True))
         return out
 
     async def chat(self, req: SummaryRequest) -> ChatAnswer:
         top = req.news[0]
         claims = [Claim("fact", top.item.title, (top.item.url,))]
         sources = list(_sources(top))
-        for m in req.bank_materials[:1]:
-            claims.append(Claim("bank", m.claim_text, (m.url,)))
+        relevant_bank = [m for m in req.bank_materials if top.item.news_id in m.news_ids or not m.news_ids]
+        for m in relevant_bank[:1]:
+            dated = f"Контекст из аналитики банка от {m.published_at.isoformat()}: " if m.published_at else ""
+            claims.append(Claim("bank", dated + m.claim_text, (m.url,)))
             sources.append(SourceRef(SourceKind.BANK, m.title, m.url))
-        claims.append(Claim("model", self._for_you(req)))
+        # Retrieval score is not factual confidence; no generated impact claim in this fallback.
         return ChatAnswer(answer_id=f"{req.trace_id}:chat", claims=tuple(claims), sources=tuple(sources),
-                          confidence=round(top.score, 2), caveat=True,
+                          confidence=0.0, caveat=True, raw_news=True,
                           follow_ups=("Как это повлияет на мои кредиты?", "Что делали бы компании моей отрасли?"))
-
-    @staticmethod
-    def _for_you(req: SummaryRequest) -> str:
-        features = req.company.features
-        if not features:
-            return "Событие может быть важно для вашего бизнеса."
-        return f"Учтено по профилю компании: {features[0]}."
