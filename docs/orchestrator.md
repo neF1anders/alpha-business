@@ -6,7 +6,7 @@
 запрос -> профиль -> retriever -> реранкер -> ветка саммари (кэш, генерация, валидация) -> ответ
 ```
 
-SLO: баннеры 2 с, чат 6 с (настраивается `BANNER_SLO_S`, `CHAT_SLO_S`). Каждый внешний вызов ограничен временем. При сбое или таймауте ветки саммари отдаётся сама новость со ссылкой (`raw_news: true`), а не ошибка.
+SLO: баннеры 3,5 с (SLI p95 до 4 с), чат 6 с (настраивается `BANNER_SLO_S`, `CHAT_SLO_S`). Каждый внешний вызов ограничен временем. При сбое или таймауте ветки саммари отдаётся сама новость со ссылкой (`raw_news: true`), а не ошибка.
 
 ## Слои (зависимости направлены внутрь)
 
@@ -35,15 +35,15 @@ Swagger: `GET /docs`.
 ## Запуск
 
 ```powershell
-python -m scripts.build_tags --from-db  # нужна БД и настроенное окружение
+uv run python -m scripts.build_tags --from-db  # нужна БД и настроенное окружение
 # Также загрузите news_articles по docs/retrieval.md.
 docker compose up -d --build orchestrator     # http://127.0.0.1:8000/docs
 ```
 
-Без Docker: `pip install -r orchestrator/requirements.txt`, затем `python -m orchestrator`.
+Без Docker: `uv sync`, затем `uv run python -m orchestrator`.
 Подготовка данных, подключение PostgreSQL и опциональные локальные модели —
 в [инструкции retrieval](retrieval.md).
-Тесты: `python -m unittest discover -s tests -p "test_orchestrator*.py"` (нужны `fastapi`, `httpx`).
+Тесты: `uv run pytest tests -k orchestrator`.
 
 ## Профиль и сегмент
 
@@ -61,5 +61,6 @@ docker compose up -d --build orchestrator     # http://127.0.0.1:8000/docs
 
 - `NewsRetriever` уже подключён: `PostgresNewsRetriever`; при `NEWS_SEARCH_MODE=local_semantic` — `LocalFeedRetriever` и `LocalPairReranker`. Вопросы чата сохраняют лексический путь.
 - `EventRetriever` подбирает банковские материалы отдельно для отобранных событий; `GET /v1/materials/{document_id}` выдаёт зарегистрированный PDF.
-- `SummaryBranch`: сейчас `TemplateSummaryBranch` без LLM; адаптер к `summary_branch` (ветка `feat/orchestrator2banners`) должен вызвать `handle` в `asyncio.to_thread` и сопоставить типы 1 к 1 (`SummaryRequest`, `BannerDTO`, `ChatAnswer`).
+- `SummaryBranch`: `infrastructure/summary_branch_adapter.py` поверх `summary_branch` (вызов по каждой новости в `asyncio.to_thread`); `TemplateSummaryBranch` без LLM остаётся для `LLM_MODE=template`.
+- `CompanyDossierSource`, `BannerFeed`, `SignalSink`/`SignalStream`: досье компании, сохранённые баннеры, события сессии. Схема и поток — [architecture.md](architecture.md), вход фронта — [api-contract.md](api-contract.md).
 - Авторизация и RBAC: сейчас `company_id` берётся из тела запроса без проверки прав. Для прототипа это допущение, в проде компания должна определяться по сессии.

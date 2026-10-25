@@ -26,8 +26,8 @@ Python-команды сами `.env` не загружают. Не вставл
 
 ```sh
 python3.12 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt -r orchestrator/requirements.txt
-.venv/bin/python -m ingestion init-db
+uv sync
+uv run python -m ingestion init-db
 ```
 
 Новости для API хранятся в `insights.news_articles`, отдельно от аналитических
@@ -37,10 +37,10 @@ python3.12 -m venv .venv
 без остальных файлов не является готовым входом этого импортера.
 
 ```sh
-.venv/bin/python -m ingestion.news_audit --snapshot .local/news-snapshot --allow-partial
-.venv/bin/python -m ingestion load-news --format snapshot --source .local/news-snapshot
-.venv/bin/python -m scripts.build_tags --from-db
-.venv/bin/python -m orchestrator
+uv run python -m ingestion.news_audit --snapshot .local/news-snapshot --allow-partial
+uv run python -m ingestion load-news --format snapshot --source .local/news-snapshot
+uv run python -m scripts.build_tags --from-db
+uv run python -m orchestrator
 ```
 
 `--allow-partial` разрешает проверить сохранённые статьи, если сборщик не достиг
@@ -50,8 +50,8 @@ python3.12 -m venv .venv
 Старый `load-news --format chunks` сохранён для командного JSONL-процесса и грузит
 аналитические чанки; это другой формат и он не заполняет `news_articles`.
 
-На macOS вместо Docker можно использовать `python scripts/local.py start`, затем
-запускать команды через `.venv/bin/python scripts/local.py run python …`.
+На macOS вместо Docker можно использовать `uv run python scripts/local.py start`, затем
+запускать команды через `uv run python scripts/local.py run python …`.
 Runner создаёт отдельный PostgreSQL с приватным Unix-сокетом в `.local/` и
 принудительно выбирает именно его. Требуется установленный Homebrew PostgreSQL 17.
 
@@ -71,16 +71,16 @@ Docker-образ оркестратора содержит только лек�
 ## Включить семантическую ленту
 
 ```sh
-.venv/bin/python -m pip install -r requirements-semantic.txt
-.venv/bin/python -m retrieval.semantic download
-.venv/bin/python -m retrieval.reranker download
-.venv/bin/python -m retrieval.semantic index
-NEWS_SEARCH_MODE=local_semantic NEWS_CANDIDATE_LIMIT=80 .venv/bin/python -m orchestrator
+uv sync --extra ml
+uv run python -m retrieval.semantic download
+uv run python -m retrieval.reranker download
+uv run python -m retrieval.semantic index
+NEWS_SEARCH_MODE=local_semantic NEWS_CANDIDATE_LIMIT=80 uv run python -m orchestrator
 ```
 
 В PowerShell переменные задаются отдельно через `$env:NEWS_SEARCH_MODE='local_semantic'`
 и `$env:NEWS_CANDIDATE_LIMIT='80'`. Для Mac runner добавьте `scripts/local.py run python`
-после `.venv/bin/python` в командах, которым нужна локальная БД.
+после `uv run python` в командах, которым нужна локальная БД.
 
 E5: `intfloat/multilingual-e5-small`, 384 измерения, mean pooling + L2,
 префиксы `query:`/`passage:`, окна до 512 токенов с перекрытием. Cross-encoder:
@@ -126,8 +126,8 @@ PDF выдаются только по зарегистрированным ID �
 ## Проверка
 
 ```sh
-.venv/bin/python -m unittest discover -s tests -q
-RUN_DB_TESTS=1 .venv/bin/python -m unittest discover -s tests -q
+uv run python -m unittest discover -s tests -q
+RUN_DB_TESTS=1 uv run python -m unittest discover -s tests -q
 ```
 
 Для полного набора нужны зависимости обработки, оркестратора и семантики, Tesseract
@@ -150,7 +150,7 @@ RUN_DB_TESTS=1 .venv/bin/python -m unittest discover -s tests -q
 разметка человеком: 0 — нет связи, 1 — общий фон, 2 — полезно, 3 — прямо значимо.
 
 ```sh
-.venv/bin/python -m evaluation --qrels .local/qrels.jsonl --run .local/run.jsonl \
+uv run python -m evaluation --qrels .local/qrels.jsonl --run .local/run.jsonl \
   --k 5 --min-relevant-grade 2 --unjudged-policy error
 ```
 

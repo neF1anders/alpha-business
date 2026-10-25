@@ -1,5 +1,5 @@
 /**
- * Real BFF client, implements interface/api-contract.md.
+ * Real BFF client, implements docs/api-contract.md.
  * Same shape as the mock client, so the rest of the app does not know which one it uses.
  */
 

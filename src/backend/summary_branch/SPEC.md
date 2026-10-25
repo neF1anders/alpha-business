@@ -30,7 +30,7 @@
 
 ## 3. Что реализовать
 
-Пакет `src/summary_branch/`, модули ниже. Имена классов можно менять, но каждый класс обязан реализовывать указанный Protocol.
+Пакет `src/backend/summary_branch/`, модули ниже. Имена классов можно менять, но каждый класс обязан реализовывать указанный Protocol.
 
 ### 3.1 `config.py`
 Один pydantic-класс `BranchConfig` со значениями по умолчанию: `max_clusters_per_request=3`, `top_k_serve=3`, `cache_ttl_s=168*3600`, `banner_ttl_h` по теме (`rate`: 168, `fx`: 36, `labor`: 120, `demand`: 120, остальное: 36), `max_generation_attempts=2`, `chat_generation_attempts=1`, `min_grounding=0.6`, `banner_store_path=None`, `urgent_min_score=0.85`, `news_text_max_chars=2000`, `quote_max_chars=200`, `prompt_version="v1"`. Пороги уверенности и веса остаются в `scoring.py`.
