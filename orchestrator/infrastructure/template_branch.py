@@ -12,7 +12,7 @@ from ..domain.models import (
 )
 
 _FACTOR_LABEL = {
-    "factor:key_rate": "ставка", "factor:fx": "курс", "factor:labor": "рынок труда",
+    "factor:key_rate": "ставка", "factor:fx": "курс",
     "factor:commodities": "сырьё", "factor:consumer_demand": "спрос", "factor:construction_market": "стройка",
 }
 _FACTOR_SEVERITY = {"factor:key_rate": Severity.ATTENTION, "factor:fx": Severity.ATTENTION}

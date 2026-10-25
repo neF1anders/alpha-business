@@ -13,13 +13,12 @@ from .models import CompanyProfile, NewsItem, RankedNews, SourceKind, utcnow
 # Вес совпадения тега по пространствам: вероятность, что событие существенно для компании.
 NAMESPACE_WEIGHT = {"factor": 0.7, "sector": 0.5, "okved": 0.4, "country": 0.3, "region": 0.2}
 
-# (тег новости, тег компании, вес): модификаторы по продуктам и масштабу.
+# (тег новости, тег компании, вес): модификаторы по продуктам банка.
 MODIFIERS: tuple[tuple[str, str, float], ...] = (
     ("factor:key_rate", "product:credit", 0.25),
     ("factor:key_rate", "product:leasing", 0.2),
     ("factor:key_rate", "product:factoring", 0.2),
     ("factor:key_rate", "product:deposit", 0.1),
-    ("factor:labor", "workers:Более 251", 0.1),
 )
 
 SOURCE_WEIGHT = {SourceKind.PRIMARY: 1.0, SourceKind.BANK: 0.9, SourceKind.MEDIA: 0.6}
