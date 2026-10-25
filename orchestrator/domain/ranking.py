@@ -27,10 +27,16 @@ W_RELEVANCE, W_RETRIEVAL, W_FRESHNESS, W_SOURCE = 0.55, 0.20, 0.15, 0.10
 
 
 class TagReranker:
-    def __init__(self, half_life_days: float = 7.0, min_score: float = 0.15, min_relevance: float = 0.05) -> None:
+    def __init__(self, half_life_days: float = 7.0, min_score: float = 0.15, min_relevance: float = 0.05, *,
+                 weights: tuple[float, float, float, float] = (W_RELEVANCE, W_RETRIEVAL, W_FRESHNESS, W_SOURCE),
+                 namespace_weight: Optional[dict[str, float]] = None, modifier_scale: float = 1.0) -> None:
+        """`weights`, `namespace_weight` и `modifier_scale` нужны для калибровки (scripts/eval_reranker.py)."""
         self._half_life = half_life_days
         self._min_score = min_score
         self._min_relevance = min_relevance
+        self._weights = weights
+        self._namespace_weight = {**NAMESPACE_WEIGHT, **(namespace_weight or {})}
+        self._modifier_scale = modifier_scale
 
     def rerank(self, profile: CompanyProfile, items: list[NewsItem], limit: int, *,
                require_tag_match: bool = True, now: Optional[datetime] = None) -> list[RankedNews]:
@@ -56,13 +62,13 @@ class TagReranker:
         miss = 1.0
         used: list[str] = []
         for tag in matched:
-            weight = NAMESPACE_WEIGHT.get(tag.split(":", 1)[0])
+            weight = self._namespace_weight.get(tag.split(":", 1)[0])
             if weight is not None:
                 miss *= 1 - weight
                 used.append(tag)
         for news_tag, company_tag, weight in MODIFIERS:
             if news_tag in item.tags and company_tag in profile.tags:
-                miss *= 1 - weight
+                miss *= 1 - min(weight * self._modifier_scale, 0.95)
         relevance = 1 - miss
         if require_tag_match and relevance < self._min_relevance:
             return None
@@ -70,8 +76,9 @@ class TagReranker:
         age_days = max((now - item.published_at).total_seconds() / 86400, 0.0)
         freshness = 0.5 ** (age_days / self._half_life)
         source = SOURCE_WEIGHT[item.source_kind]
-        score = (W_RELEVANCE * relevance + W_RETRIEVAL * min(max(item.retrieval_score, 0.0), 1.0)
-                 + W_FRESHNESS * freshness + W_SOURCE * source)
+        w_rel, w_ret, w_fresh, w_src = self._weights
+        score = (w_rel * relevance + w_ret * min(max(item.retrieval_score, 0.0), 1.0)
+                 + w_fresh * freshness + w_src * source)
         if score < self._min_score:
             return None
         reasons = (f"relevance={relevance:.2f}", f"freshness={freshness:.2f}", f"source={source:.1f}")

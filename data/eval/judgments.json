@@ -1,0 +1,2753 @@
+{
+  "meta": {
+    "model": "deepseek/deepseek-v4.1-flash",
+    "seed": 20261025,
+    "scale": "0 не важна, 1 полезно, 2 критична",
+    "tokens": {
+      "completion_tokens": 14129,
+      "prompt_tokens": 30404,
+      "total_tokens": 44533,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "cost": 0.08114265924765002
+    },
+    "errors": {}
+  },
+  "companies": [
+    {
+      "id": "C1",
+      "source_id": "U_49734",
+      "segment_id": "trade-small",
+      "tags": [
+        "country:БЕЛЬГИЯ",
+        "country:ЛИТВА",
+        "country:ТАЙВАНЬ",
+        "factor:consumer_demand",
+        "factor:fx",
+        "factor:key_rate",
+        "okved:46",
+        "product:leasing",
+        "product:payroll",
+        "product:rko",
+        "region:Москва",
+        "sector:trade",
+        "size:small",
+        "stage:Бизнес в новой реальности",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C2",
+      "source_id": "U_280349",
+      "segment_id": "real_estate-small",
+      "tags": [
+        "factor:construction_market",
+        "okved:68",
+        "region:Санкт-Петербург",
+        "sector:real_estate",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C3",
+      "source_id": "U_259936",
+      "segment_id": "prof_services-small",
+      "tags": [
+        "okved:74",
+        "region:Республика Татарстан",
+        "sector:prof_services",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C4",
+      "source_id": "U_171293",
+      "segment_id": "construction-small",
+      "tags": [
+        "factor:construction_market",
+        "okved:41",
+        "product:rko",
+        "region:Московская область",
+        "sector:construction",
+        "size:small",
+        "stage:Бизнес в новой реальности",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C5",
+      "source_id": "U_78075",
+      "segment_id": "horeca-small",
+      "tags": [
+        "factor:consumer_demand",
+        "okved:56",
+        "product:rko",
+        "region:Москва",
+        "sector:horeca",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:16-100"
+      ]
+    },
+    {
+      "id": "C6",
+      "source_id": "U_77187",
+      "segment_id": "it_telecom-small",
+      "tags": [
+        "okved:62",
+        "product:rko",
+        "region:Москва",
+        "sector:it_telecom",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C7",
+      "source_id": "U_65961",
+      "segment_id": "trade-mid",
+      "tags": [
+        "country:КАЗАХСТАН",
+        "country:КИТАЙ",
+        "factor:consumer_demand",
+        "factor:fx",
+        "factor:key_rate",
+        "okved:45",
+        "product:credit",
+        "product:deposit",
+        "product:payroll",
+        "product:rko",
+        "region:Москва",
+        "sector:trade",
+        "size:mid",
+        "stage:Бизнес в новой реальности",
+        "workers:101-250"
+      ]
+    },
+    {
+      "id": "C8",
+      "source_id": "U_123764",
+      "segment_id": "manufacturing-small",
+      "tags": [
+        "okved:33",
+        "product:payroll",
+        "product:rko",
+        "region:Кемеровская область",
+        "sector:manufacturing",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:16-100"
+      ]
+    },
+    {
+      "id": "C9",
+      "source_id": "U_88463",
+      "segment_id": "transport-small",
+      "tags": [
+        "okved:52",
+        "product:rko",
+        "region:Приморский край",
+        "sector:transport",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:16-100"
+      ]
+    },
+    {
+      "id": "C10",
+      "source_id": "U_34260",
+      "segment_id": "admin_services-small",
+      "tags": [
+        "okved:82",
+        "product:payroll",
+        "product:rko",
+        "region:Москва",
+        "sector:admin_services",
+        "size:small",
+        "stage:Бизнес в новой реальности",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C11",
+      "source_id": "U_291044",
+      "segment_id": "finance-small",
+      "tags": [
+        "okved:64",
+        "region:Самарская область",
+        "sector:finance",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C12",
+      "source_id": "U_173819",
+      "segment_id": "health-small",
+      "tags": [
+        "okved:86",
+        "product:payroll",
+        "product:rko",
+        "region:Санкт-Петербург",
+        "sector:health",
+        "size:small",
+        "stage:Бизнес в новой реальности",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C13",
+      "source_id": "U_63691",
+      "segment_id": "culture_sport-small",
+      "tags": [
+        "factor:consumer_demand",
+        "okved:93",
+        "product:payroll",
+        "region:Москва",
+        "sector:culture_sport",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C14",
+      "source_id": "U_74238",
+      "segment_id": "construction-mid",
+      "tags": [
+        "factor:construction_market",
+        "factor:key_rate",
+        "okved:42",
+        "product:guarantee",
+        "product:leasing",
+        "product:payroll",
+        "product:rko",
+        "region:Москва",
+        "sector:construction",
+        "size:mid",
+        "stage:Оптимизация",
+        "workers:16-100"
+      ]
+    },
+    {
+      "id": "C15",
+      "source_id": "U_196757",
+      "segment_id": "mining-small",
+      "tags": [
+        "factor:commodities",
+        "okved:07",
+        "product:payroll",
+        "product:rko",
+        "region:Красноярский край",
+        "sector:mining",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C16",
+      "source_id": "U_118577",
+      "segment_id": "manufacturing-mid",
+      "tags": [
+        "factor:commodities",
+        "factor:key_rate",
+        "okved:25",
+        "product:guarantee",
+        "product:leasing",
+        "product:payroll",
+        "product:rko",
+        "region:Красноярский край",
+        "sector:manufacturing",
+        "size:mid",
+        "stage:Оптимизация",
+        "workers:16-100"
+      ]
+    },
+    {
+      "id": "C17",
+      "source_id": "U_258146",
+      "segment_id": "other_services-small",
+      "tags": [
+        "factor:consumer_demand",
+        "okved:95",
+        "product:rko",
+        "region:Москва",
+        "sector:other_services",
+        "size:small",
+        "stage:Бизнес в новой реальности",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C18",
+      "source_id": "U_293510",
+      "segment_id": "transport-mid",
+      "tags": [
+        "okved:52",
+        "region:Приморский край",
+        "sector:transport",
+        "size:mid",
+        "stage:Оптимизация",
+        "workers:16-100"
+      ]
+    },
+    {
+      "id": "C19",
+      "source_id": "U_343293",
+      "segment_id": "agro-small",
+      "tags": [
+        "factor:commodities",
+        "okved:01",
+        "region:Ростовская область",
+        "sector:agro",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:16-100"
+      ]
+    },
+    {
+      "id": "C20",
+      "source_id": "U_72766",
+      "segment_id": "prof_services-mid",
+      "tags": [
+        "okved:72",
+        "product:payroll",
+        "product:rko",
+        "region:Санкт-Петербург",
+        "sector:prof_services",
+        "size:mid",
+        "stage:Оптимизация",
+        "workers:101-250"
+      ]
+    },
+    {
+      "id": "C21",
+      "source_id": "U_1242",
+      "segment_id": "it_telecom-mid",
+      "tags": [
+        "country:УЗБЕКИСТАН",
+        "factor:fx",
+        "factor:key_rate",
+        "okved:62",
+        "product:guarantee",
+        "product:leasing",
+        "product:payroll",
+        "product:rko",
+        "region:Челябинская область",
+        "sector:it_telecom",
+        "size:mid",
+        "stage:Оптимизация",
+        "workers:101-250"
+      ]
+    },
+    {
+      "id": "C22",
+      "source_id": "U_342260",
+      "segment_id": "utilities-small",
+      "tags": [
+        "okved:38",
+        "region:Москва",
+        "sector:utilities",
+        "size:small",
+        "stage:Бизнес в новой реальности",
+        "workers:Менее 15"
+      ]
+    },
+    {
+      "id": "C23",
+      "source_id": "U_331660",
+      "segment_id": "real_estate-mid",
+      "tags": [
+        "factor:construction_market",
+        "okved:68",
+        "region:Москва",
+        "sector:real_estate",
+        "size:mid",
+        "stage:Оптимизация",
+        "workers:16-100"
+      ]
+    },
+    {
+      "id": "C24",
+      "source_id": "U_378172",
+      "segment_id": "energy-small",
+      "tags": [
+        "factor:commodities",
+        "okved:35",
+        "region:Краснодарский край",
+        "sector:energy",
+        "size:small",
+        "stage:Оптимизация",
+        "workers:Менее 15"
+      ]
+    }
+  ],
+  "news": [
+    {
+      "news_id": "n1",
+      "cluster_id": "c1",
+      "title": "Банк России сохранил ключевую ставку на уровне 14%",
+      "text": "Совет директоров Банка России сохранил ключевую ставку 14% годовых после серии снижений.",
+      "tags": [
+        "factor:key_rate"
+      ],
+      "source_kind": "primary",
+      "age_days": 1.0,
+      "origin": "sample_news"
+    },
+    {
+      "news_id": "n2",
+      "cluster_id": "c1",
+      "title": "Эксперты: ставка останется высокой до конца года",
+      "text": "Аналитики ожидают, что ключевая ставка не изменится в ближайшие месяцы.",
+      "tags": [
+        "factor:key_rate"
+      ],
+      "source_kind": "media",
+      "age_days": 2.0,
+      "origin": "sample_news"
+    },
+    {
+      "news_id": "n3",
+      "cluster_id": "c3",
+      "title": "Рубль ослаб к юаню на фоне роста импорта",
+      "text": "Курс юаня вырос, импортёры закупают валюту для оплаты поставок из Китая.",
+      "tags": [
+        "country:КИТАЙ",
+        "factor:fx"
+      ],
+      "source_kind": "media",
+      "age_days": 3.0,
+      "origin": "sample_news"
+    },
+    {
+      "news_id": "n4",
+      "cluster_id": "c4",
+      "title": "Цены на металлы выросли на 6% за месяц",
+      "text": "Подорожали сталь и алюминий, отрасли с сырьевой зависимостью отмечают рост затрат.",
+      "tags": [
+        "factor:commodities",
+        "sector:manufacturing"
+      ],
+      "source_kind": "media",
+      "age_days": 4.0,
+      "origin": "sample_news"
+    },
+    {
+      "news_id": "n5",
+      "cluster_id": "c5",
+      "title": "Потребительский спрос остаётся на пике",
+      "text": "Оборот розничной торговли продолжает расти, потребление поддерживают зарплаты.",
+      "tags": [
+        "factor:consumer_demand",
+        "sector:trade"
+      ],
+      "source_kind": "bank",
+      "age_days": 2.0,
+      "origin": "sample_news"
+    },
+    {
+      "news_id": "n7",
+      "cluster_id": "c7",
+      "title": "Спрос на новостройки снижается при дорогой ипотеке",
+      "text": "Застройщики сообщают о сокращении продаж, часть проектов переносится.",
+      "tags": [
+        "factor:construction_market",
+        "sector:construction",
+        "sector:real_estate"
+      ],
+      "source_kind": "media",
+      "age_days": 6.0,
+      "origin": "sample_news"
+    },
+    {
+      "news_id": "n8",
+      "cluster_id": "c8",
+      "title": "Итоги прошлого квартала в отрасли транспорта",
+      "text": "Старая сводка о грузоперевозках за прошлый квартал.",
+      "tags": [
+        "sector:transport"
+      ],
+      "source_kind": "media",
+      "age_days": 40.0,
+      "origin": "sample_news"
+    },
+    {
+      "news_id": "g1",
+      "cluster_id": "g1",
+      "title": "Росстат: инфляция в августе замедлилась до 0,2% на фоне удешевления плодоовощной продукции",
+      "text": "По данным Росстата, недельная инфляция с 20 по 26 августа составила 0,05%, а годовая замедлилась до 6,8%. Основной вклад в снижение внесло сезонное падение цен на овощи и фрукты.",
+      "tags": [
+        "factor:consumer_demand",
+        "sector:trade"
+      ],
+      "source_kind": "primary",
+      "age_days": 2.0,
+      "origin": "llm"
+    },
+    {
+      "news_id": "g2",
+      "cluster_id": "g2",
+      "title": "Золото дорожает на фоне глобального спроса на защитные активы",
+      "text": "Цена золота на Лондонской бирже превысила $2500 за унцию, обновив исторический максимум. Российские инвесторы увеличили вложения в драгметаллы через биржевые фонды.",
+      "tags": [
+        "factor:commodities",
+        "factor:fx",
+        "sector:finance"
+      ],
+      "source_kind": "media",
+      "age_days": 1.0,
+      "origin": "llm"
+    },
+    {
+      "news_id": "g3",
+      "cluster_id": "g3",
+      "title": "Доходности ОФЗ выросли до 13,5% на фоне ожиданий ужесточения ДКП",
+      "text": "На аукционе Минфина доходность 10-летних ОФЗ достигла 13,5%, что стало максимумом с начала года. Инвесторы закладывают в цены возможное повышение ключевой ставки.",
+      "tags": [
+        "factor:key_rate",
+        "sector:finance"
+      ],
+      "source_kind": "bank",
+      "age_days": 3.0,
+      "origin": "llm"
+    },
+    {
+      "news_id": "g4",
+      "cluster_id": "g4",
+      "title": "Цены на сталь в России выросли на 5% из-за экспортных пошлин и логистики",
+      "text": "Стоимость горячекатаного проката на внутреннем рынке увеличилась на 5% за месяц. Экспортёры жалуются на рост логистических издержек и укрепление рубля.",
+      "tags": [
+        "factor:commodities",
+        "sector:manufacturing"
+      ],
+      "source_kind": "media",
+      "age_days": 5.0,
+      "origin": "llm"
+    },
+    {
+      "news_id": "g5",
+      "cluster_id": "g5",
+      "title": "Розничные продажи в июле выросли на 7,2% год к году",
+      "text": "Оборот розничной торговли в июле увеличился на 7,2% по сравнению с прошлым годом, превысив прогнозы аналитиков. Основной драйвер — рост реальных располагаемых доходов населения.",
+      "tags": [
+        "factor:consumer_demand",
+        "sector:trade"
+      ],
+      "source_kind": "primary",
+      "age_days": 7.0,
+      "origin": "llm"
+    },
+    {
+      "news_id": "g6",
+      "cluster_id": "g6",
+      "title": "ИТ-компании наращивают спрос на импортозамещающие решения",
+      "text": "Российские ИТ-компании увеличили закупки отечественного ПО на 30% за первое полугодие. Основной спрос приходится на облачные сервисы и кибербезопасность.",
+      "tags": [
+        "sector:it_telecom"
+      ],
+      "source_kind": "media",
+      "age_days": 4.0,
+      "origin": "llm"
+    },
+    {
+      "news_id": "g7",
+      "cluster_id": "g7",
+      "title": "Агросектор: урожай зерновых превысил прошлогодний на 8%",
+      "text": "По данным Минсельхоза, валовой сбор зерна в этом сезоне достиг 135 млн тонн, что на 8% больше прошлогоднего уровня. Экспортные пошлины могут быть скорректированы для поддержки аграриев.",
+      "tags": [
+        "factor:commodities",
+        "sector:agro"
+      ],
+      "source_kind": "primary",
+      "age_days": 6.0,
+      "origin": "llm"
+    },
+    {
+      "news_id": "g8",
+      "cluster_id": "g8",
+      "title": "Туризм и общепит: летний сезон показал рост спроса на 12%",
+      "text": "Внутренний туристический поток вырос на 12% по сравнению с прошлым летом, а оборот общепита увеличился на 9%. Основной рост обеспечили южные регионы и крупные города.",
+      "tags": [
+        "factor:consumer_demand",
+        "sector:horeca"
+      ],
+      "source_kind": "media",
+      "age_days": 8.0,
+      "origin": "llm"
+    }
+  ],
+  "judgments": [
+    {
+      "company": "C1",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость лизинга и кредитов для МСБ"
+    },
+    {
+      "company": "C1",
+      "news_id": "n2",
+      "grade": 2,
+      "reason": "Сохранение высокой ставки надолго — дорогое финансирование лизинга и РКО"
+    },
+    {
+      "company": "C1",
+      "news_id": "n3",
+      "grade": 2,
+      "reason": "Ослабление рубля к юаню бьёт по импортёрам из Китая, растут закупочные цены"
+    },
+    {
+      "company": "C1",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен на металлы косвенно влияет на затраты торговли оборудованием"
+    },
+    {
+      "company": "C1",
+      "news_id": "n5",
+      "grade": 2,
+      "reason": "Пик потребительского спроса — прямой драйвер выручки розничной торговли"
+    },
+    {
+      "company": "C1",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Снижение спроса на новостройки не связано с профилем торговой компании"
+    },
+    {
+      "company": "C1",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту, не влияет на решения компании"
+    },
+    {
+      "company": "C1",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции полезно знать, влияет на ставку и спрос"
+    },
+    {
+      "company": "C1",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не относится к деятельности торговой компании"
+    },
+    {
+      "company": "C1",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогом финансировании лизинга"
+    },
+    {
+      "company": "C1",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Рост цен на сталь повышает затраты при закупке товаров"
+    },
+    {
+      "company": "C1",
+      "news_id": "g5",
+      "grade": 2,
+      "reason": "Рост розничных продаж напрямую увеличивает оборот торговой компании"
+    },
+    {
+      "company": "C1",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается торгового МСБ с лизингом"
+    },
+    {
+      "company": "C1",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Урожай зерновых не влияет на непродовольственную торговлю компании"
+    },
+    {
+      "company": "C1",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма и общепита косвенно поддерживает потребительский спрос"
+    },
+    {
+      "company": "C2",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость ипотеки и кредитов застройщика"
+    },
+    {
+      "company": "C2",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки, влияет на планы финансирования"
+    },
+    {
+      "company": "C2",
+      "news_id": "n3",
+      "grade": 0,
+      "reason": "Курс юаня не связан с деятельностью компании"
+    },
+    {
+      "company": "C2",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен металлов удорожает стройматериалы и себестоимость"
+    },
+    {
+      "company": "C2",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Потребительский спрос косвенно влияет на рынок недвижимости"
+    },
+    {
+      "company": "C2",
+      "news_id": "n7",
+      "grade": 2,
+      "reason": "Падение спроса на новостройки прямо бьёт по выручке"
+    },
+    {
+      "company": "C2",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту, не относится к отрасли"
+    },
+    {
+      "company": "C2",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ожидания по ставке"
+    },
+    {
+      "company": "C2",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью компании"
+    },
+    {
+      "company": "C2",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогом финансировании"
+    },
+    {
+      "company": "C2",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Подорожание стали повышает затраты на строительство"
+    },
+    {
+      "company": "C2",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно поддерживает экономику"
+    },
+    {
+      "company": "C2",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается недвижимости"
+    },
+    {
+      "company": "C2",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с деятельностью компании"
+    },
+    {
+      "company": "C2",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не относятся к рынку недвижимости"
+    },
+    {
+      "company": "C3",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость кредитов и лизинга для компании"
+    },
+    {
+      "company": "C3",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки полезен для планирования финансов"
+    },
+    {
+      "company": "C3",
+      "news_id": "n3",
+      "grade": 0,
+      "reason": "Ослабление рубля к юаню не влияет на услуги без импорта"
+    },
+    {
+      "company": "C3",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Цены на металлы не относятся к профессиональным услугам"
+    },
+    {
+      "company": "C3",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Рост потребительского спроса косвенно улучшает деловую активность клиентов"
+    },
+    {
+      "company": "C3",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Спрос на новостройки не связан с деятельностью компании"
+    },
+    {
+      "company": "C3",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту нерелевантна отрасли"
+    },
+    {
+      "company": "C3",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на общую экономическую ситуацию"
+    },
+    {
+      "company": "C3",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с профессиональными услугами компании"
+    },
+    {
+      "company": "C3",
+      "news_id": "g3",
+      "grade": 1,
+      "reason": "Рост доходностей ОФЗ сигнализирует о возможном ужесточении ДКП"
+    },
+    {
+      "company": "C3",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Цены на сталь не влияют на услуги компании"
+    },
+    {
+      "company": "C3",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно улучшает спрос на услуги"
+    },
+    {
+      "company": "C3",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не относится к профилю компании"
+    },
+    {
+      "company": "C3",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с деятельностью компании"
+    },
+    {
+      "company": "C3",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не относятся к профессиональным услугам"
+    },
+    {
+      "company": "C4",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость кредитов и ипотеки для строительного бизнеса"
+    },
+    {
+      "company": "C4",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки, полезно для планирования финансов"
+    },
+    {
+      "company": "C4",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля удорожает импортные стройматериалы и оборудование"
+    },
+    {
+      "company": "C4",
+      "news_id": "n4",
+      "grade": 2,
+      "reason": "Рост цен на металлы напрямую увеличивает себестоимость строительства"
+    },
+    {
+      "company": "C4",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Потребительский спрос косвенно влияет на рынок жилья и заказы"
+    },
+    {
+      "company": "C4",
+      "news_id": "n7",
+      "grade": 2,
+      "reason": "Снижение спроса на новостройки прямо бьёт по выручке застройщика"
+    },
+    {
+      "company": "C4",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту, не относится к строительству"
+    },
+    {
+      "company": "C4",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ставку и стоимость ресурсов"
+    },
+    {
+      "company": "C4",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью строительной компании"
+    },
+    {
+      "company": "C4",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах для бизнеса"
+    },
+    {
+      "company": "C4",
+      "news_id": "g4",
+      "grade": 2,
+      "reason": "Подорожание стали напрямую повышает затраты на стройматериалы"
+    },
+    {
+      "company": "C4",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно поддерживает экономику и спрос"
+    },
+    {
+      "company": "C4",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается строительной отрасли"
+    },
+    {
+      "company": "C4",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не влияет на строительный малый бизнес"
+    },
+    {
+      "company": "C4",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не связаны со строительством"
+    },
+    {
+      "company": "C5",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость кредитов и лизинга для кафе"
+    },
+    {
+      "company": "C5",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки, полезно для планирования"
+    },
+    {
+      "company": "C5",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля удорожает импортное оборудование и продукты"
+    },
+    {
+      "company": "C5",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен на металлы косвенно влияет на оборудование и ремонт"
+    },
+    {
+      "company": "C5",
+      "news_id": "n5",
+      "grade": 2,
+      "reason": "Пик потребительского спроса прямо повышает выручку общепита"
+    },
+    {
+      "company": "C5",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Новостройки и ипотека не связаны с деятельностью общепита"
+    },
+    {
+      "company": "C5",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка о грузоперевозках, не влияет на решения"
+    },
+    {
+      "company": "C5",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции снижает давление на закупочные цены"
+    },
+    {
+      "company": "C5",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не относится к закупкам или финансам общепита"
+    },
+    {
+      "company": "C5",
+      "news_id": "g3",
+      "grade": 1,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C5",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Подорожание стали влияет на оборудование и ремонт кухни"
+    },
+    {
+      "company": "C5",
+      "news_id": "g5",
+      "grade": 2,
+      "reason": "Рост розничных продаж подтверждает сильный спрос на общепит"
+    },
+    {
+      "company": "C5",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается ресторанного бизнеса"
+    },
+    {
+      "company": "C5",
+      "news_id": "g7",
+      "grade": 1,
+      "reason": "Хороший урожай может стабилизировать цены на продукты"
+    },
+    {
+      "company": "C5",
+      "news_id": "g8",
+      "grade": 2,
+      "reason": "Рост оборота общепита на 9% прямо отражает спрос в отрасли"
+    },
+    {
+      "company": "C6",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость кредитов и размещения средств для МСБ."
+    },
+    {
+      "company": "C6",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки полезен для планирования финансов ИТ-компании."
+    },
+    {
+      "company": "C6",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля к юаню влияет на закупки импортного ПО и оборудования."
+    },
+    {
+      "company": "C6",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Цены на металлы не влияют на ИТ-компанию с офисной деятельностью."
+    },
+    {
+      "company": "C6",
+      "news_id": "n5",
+      "grade": 0,
+      "reason": "Потребительский спрос не связан с B2B ИТ-услугами компании."
+    },
+    {
+      "company": "C6",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Спрос на новостройки не относится к отрасли ИТ и телеком."
+    },
+    {
+      "company": "C6",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка о грузоперевозках нерелевантна для ИТ-компании."
+    },
+    {
+      "company": "C6",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на общую макроэкономическую ситуацию и ставки."
+    },
+    {
+      "company": "C6",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью ИТ-компании малого бизнеса."
+    },
+    {
+      "company": "C6",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о возможном повышении ставки, влияет на кредиты."
+    },
+    {
+      "company": "C6",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Цены на сталь не влияют на ИТ-компанию без производственных затрат."
+    },
+    {
+      "company": "C6",
+      "news_id": "g5",
+      "grade": 0,
+      "reason": "Рост розничных продаж не влияет на B2B ИТ-услуги компании."
+    },
+    {
+      "company": "C6",
+      "news_id": "g6",
+      "grade": 2,
+      "reason": "Спрос на импортозамещающее ПО напрямую касается ИТ-отрасли и возможностей компании."
+    },
+    {
+      "company": "C6",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с деятельностью ИТ-компании в Москве."
+    },
+    {
+      "company": "C6",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не относятся к ИТ-отрасли и клиентам компании."
+    },
+    {
+      "company": "C7",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость кредита и доходность депозитов компании"
+    },
+    {
+      "company": "C7",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз ставки полезен для планирования кредитов и депозитов"
+    },
+    {
+      "company": "C7",
+      "news_id": "n3",
+      "grade": 2,
+      "reason": "Ослабление рубля к юаню удорожает импорт из Китая"
+    },
+    {
+      "company": "C7",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен металлов косвенно влияет на затраты торговли"
+    },
+    {
+      "company": "C7",
+      "news_id": "n5",
+      "grade": 2,
+      "reason": "Пик потребительского спроса прямо поддерживает выручку торговли"
+    },
+    {
+      "company": "C7",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Спрос на новостройки не связан с торговой компанией"
+    },
+    {
+      "company": "C7",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Старая сводка транспорта не влияет на решения компании"
+    },
+    {
+      "company": "C7",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ставку и потребительские цены"
+    },
+    {
+      "company": "C7",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не относится к деятельности торговой компании"
+    },
+    {
+      "company": "C7",
+      "news_id": "g3",
+      "grade": 1,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C7",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Рост цен стали косвенно повышает издержки торговли"
+    },
+    {
+      "company": "C7",
+      "news_id": "g5",
+      "grade": 2,
+      "reason": "Рост розничных продаж прямо увеличивает выручку компании"
+    },
+    {
+      "company": "C7",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается торговой компании"
+    },
+    {
+      "company": "C7",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Урожай зерновых не влияет на торговлю компании"
+    },
+    {
+      "company": "C7",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма и общепита косвенно поддерживает потребительский спрос"
+    },
+    {
+      "company": "C8",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость кредитов и лизинга для производства"
+    },
+    {
+      "company": "C8",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки важен для планирования займов"
+    },
+    {
+      "company": "C8",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля к юаню влияет на импорт сырья и оборудования"
+    },
+    {
+      "company": "C8",
+      "news_id": "n4",
+      "grade": 2,
+      "reason": "Рост цен на металлы прямо повышает затраты металлообрабатывающего производства"
+    },
+    {
+      "company": "C8",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Рост потребспроса полезен для сбыта, но косвенно"
+    },
+    {
+      "company": "C8",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Спрос на новостройки не связан с деятельностью компании"
+    },
+    {
+      "company": "C8",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту не влияет на решения"
+    },
+    {
+      "company": "C8",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ставку и общую конъюнктуру"
+    },
+    {
+      "company": "C8",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не относится к отрасли и продуктам компании"
+    },
+    {
+      "company": "C8",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C8",
+      "news_id": "g4",
+      "grade": 2,
+      "reason": "Рост цен на сталь напрямую увеличивает себестоимость производства"
+    },
+    {
+      "company": "C8",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно поддерживает спрос на продукцию"
+    },
+    {
+      "company": "C8",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается металлообработки"
+    },
+    {
+      "company": "C8",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с отраслью компании"
+    },
+    {
+      "company": "C8",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не влияют на производство"
+    },
+    {
+      "company": "C9",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость кредитов и лизинга для транспортной компании"
+    },
+    {
+      "company": "C9",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз ставки полезен для планирования кредитной нагрузки"
+    },
+    {
+      "company": "C9",
+      "news_id": "n3",
+      "grade": 2,
+      "reason": "Ослабление рубля к юаню удорожает импортные запчасти и технику"
+    },
+    {
+      "company": "C9",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен на металлы косвенно влияет на стоимость транспорта и ремонта"
+    },
+    {
+      "company": "C9",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Рост потребления поддерживает спрос на грузоперевозки"
+    },
+    {
+      "company": "C9",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Снижение спроса на новостройки не связано с транспортным бизнесом"
+    },
+    {
+      "company": "C9",
+      "news_id": "n8",
+      "grade": 1,
+      "reason": "Отраслевая сводка по грузоперевозкам полезна для сравнения"
+    },
+    {
+      "company": "C9",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на общую экономическую конъюнктуру"
+    },
+    {
+      "company": "C9",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не относится к деятельности транспортной компании"
+    },
+    {
+      "company": "C9",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C9",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Рост цен на сталь и логистику влияет на издержки перевозок"
+    },
+    {
+      "company": "C9",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж поддерживает спрос на грузоперевозки"
+    },
+    {
+      "company": "C9",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается транспортной отрасли"
+    },
+    {
+      "company": "C9",
+      "news_id": "g7",
+      "grade": 1,
+      "reason": "Рост урожая увеличивает объёмы перевозок зерна"
+    },
+    {
+      "company": "C9",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма повышает спрос на пассажирские и грузовые перевозки"
+    },
+    {
+      "company": "C10",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость кредитов и депозитов для МСБ"
+    },
+    {
+      "company": "C10",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз ставки полезен для планирования расходов и займов"
+    },
+    {
+      "company": "C10",
+      "news_id": "n3",
+      "grade": 0,
+      "reason": "Курс юаня не влияет на админуслуги без импорта"
+    },
+    {
+      "company": "C10",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Металлы не относятся к деятельности компании"
+    },
+    {
+      "company": "C10",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Рост спроса косвенно улучшает рынок услуг"
+    },
+    {
+      "company": "C10",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Новостройки и ипотека не связаны с админуслугами"
+    },
+    {
+      "company": "C10",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту неактуальна"
+    },
+    {
+      "company": "C10",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ставку и расходы"
+    },
+    {
+      "company": "C10",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с бизнесом компании"
+    },
+    {
+      "company": "C10",
+      "news_id": "g3",
+      "grade": 1,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C10",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Сталь не используется в админуслугах"
+    },
+    {
+      "company": "C10",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж отражает общий спрос"
+    },
+    {
+      "company": "C10",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается компании"
+    },
+    {
+      "company": "C10",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с деятельностью компании"
+    },
+    {
+      "company": "C10",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма и общепита косвенно расширяет рынок услуг"
+    },
+    {
+      "company": "C11",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость фондирования и доходность для финансовой компании"
+    },
+    {
+      "company": "C11",
+      "news_id": "n2",
+      "grade": 2,
+      "reason": "Прогноз сохранения высокой ставки влияет на планирование ставок и маржи"
+    },
+    {
+      "company": "C11",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля к юаню косвенно влияет на валютные риски клиентов"
+    },
+    {
+      "company": "C11",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Цены на металлы не связаны с финансовым сектором компании"
+    },
+    {
+      "company": "C11",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Рост потребления полезен для оценки спроса на кредиты МСБ"
+    },
+    {
+      "company": "C11",
+      "news_id": "n7",
+      "grade": 1,
+      "reason": "Снижение спроса на ипотеку влияет на кредитный портфель банка"
+    },
+    {
+      "company": "C11",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту не относится к профилю компании"
+    },
+    {
+      "company": "C11",
+      "news_id": "g1",
+      "grade": 2,
+      "reason": "Замедление инфляции влияет на ставки и решения по кредитованию"
+    },
+    {
+      "company": "C11",
+      "news_id": "g2",
+      "grade": 1,
+      "reason": "Рост золота отражает спрос на защитные активы, полезно для инвестрешений"
+    },
+    {
+      "company": "C11",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ прямо влияет на ставки и фондирование банка"
+    },
+    {
+      "company": "C11",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Цены на сталь не касаются финансовой компании"
+    },
+    {
+      "company": "C11",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж сигнализирует о спросе на кредиты МСБ"
+    },
+    {
+      "company": "C11",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не связано с финансовым сектором компании"
+    },
+    {
+      "company": "C11",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Урожай зерновых не относится к деятельности финансовой компании"
+    },
+    {
+      "company": "C11",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма и общепита полезен для оценки клиентских отраслей"
+    },
+    {
+      "company": "C12",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка влияет на кредиты и расходы малого бизнеса"
+    },
+    {
+      "company": "C12",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз ставки полезен для планирования финансов"
+    },
+    {
+      "company": "C12",
+      "news_id": "n3",
+      "grade": 0,
+      "reason": "Клиника не зависит от импорта из Китая"
+    },
+    {
+      "company": "C12",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Металлы не влияют на медицинские услуги"
+    },
+    {
+      "company": "C12",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Рост спроса может косвенно увеличить обращения"
+    },
+    {
+      "company": "C12",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Новостройки не связаны с медицинской клиникой"
+    },
+    {
+      "company": "C12",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Транспорт не относится к деятельности клиники"
+    },
+    {
+      "company": "C12",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Инфляция влияет на расходы и зарплаты клиники"
+    },
+    {
+      "company": "C12",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с медицинским бизнесом"
+    },
+    {
+      "company": "C12",
+      "news_id": "g3",
+      "grade": 1,
+      "reason": "Доходности ОФЗ сигнализируют о ставках и кредитах"
+    },
+    {
+      "company": "C12",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Сталь не влияет на услуги клиники"
+    },
+    {
+      "company": "C12",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост доходов может повысить спрос на услуги"
+    },
+    {
+      "company": "C12",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается клиники"
+    },
+    {
+      "company": "C12",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с медициной"
+    },
+    {
+      "company": "C12",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма и общепита косвенно влияет на спрос"
+    },
+    {
+      "company": "C13",
+      "news_id": "n1",
+      "grade": 1,
+      "reason": "Ставка влияет на кредиты и расходы, но для малого бизнеса умеренно"
+    },
+    {
+      "company": "C13",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз ставки полезен для планирования расходов и займов"
+    },
+    {
+      "company": "C13",
+      "news_id": "n3",
+      "grade": 0,
+      "reason": "Курс юаня не влияет: нет внешней торговли и импорта"
+    },
+    {
+      "company": "C13",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Металлы не относятся к сфере культуры и спорта"
+    },
+    {
+      "company": "C13",
+      "news_id": "n5",
+      "grade": 2,
+      "reason": "Рост потребительского спроса напрямую увеличивает выручку компании"
+    },
+    {
+      "company": "C13",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Новостройки и ипотека не связаны с деятельностью компании"
+    },
+    {
+      "company": "C13",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту не относится к отрасли"
+    },
+    {
+      "company": "C13",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции полезно для понимания макросреды и спроса"
+    },
+    {
+      "company": "C13",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не влияет на культуру, спорт и зарплатные продукты"
+    },
+    {
+      "company": "C13",
+      "news_id": "g3",
+      "grade": 1,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C13",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Цены на сталь не касаются сферы культуры и спорта"
+    },
+    {
+      "company": "C13",
+      "news_id": "g5",
+      "grade": 2,
+      "reason": "Рост розничных продаж и доходов повышает спрос на услуги компании"
+    },
+    {
+      "company": "C13",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не связано с профилем компании"
+    },
+    {
+      "company": "C13",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не относится к культуре, спорту и услугам"
+    },
+    {
+      "company": "C13",
+      "news_id": "g8",
+      "grade": 2,
+      "reason": "Рост туризма и общепита повышает спрос на культурно-спортивные услуги"
+    },
+    {
+      "company": "C14",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% напрямую влияет на кредиты, лизинг и гарантии компании"
+    },
+    {
+      "company": "C14",
+      "news_id": "n2",
+      "grade": 2,
+      "reason": "Сохранение высокой ставки означает дорогое финансирование проектов и лизинга"
+    },
+    {
+      "company": "C14",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля к юаню влияет на импорт стройматериалов и оборудования"
+    },
+    {
+      "company": "C14",
+      "news_id": "n4",
+      "grade": 2,
+      "reason": "Рост цен на металлы повышает себестоимость строительных работ компании"
+    },
+    {
+      "company": "C14",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Потребительский спрос косвенно влияет на строительный рынок и заказы"
+    },
+    {
+      "company": "C14",
+      "news_id": "n7",
+      "grade": 2,
+      "reason": "Снижение спроса на новостройки прямо угрожает выручке строительной компании"
+    },
+    {
+      "company": "C14",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту не относится к строительной отрасли"
+    },
+    {
+      "company": "C14",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ожидания по ключевой ставке и кредитам"
+    },
+    {
+      "company": "C14",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Цены на золото не связаны с деятельностью строительной компании"
+    },
+    {
+      "company": "C14",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогом финансировании и ставках"
+    },
+    {
+      "company": "C14",
+      "news_id": "g4",
+      "grade": 2,
+      "reason": "Рост цен на сталь напрямую увеличивает затраты строительной компании"
+    },
+    {
+      "company": "C14",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно поддерживает деловую активность и спрос"
+    },
+    {
+      "company": "C14",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не относится к строительной отрасли компании"
+    },
+    {
+      "company": "C14",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Урожай зерновых не влияет на строительный бизнес компании"
+    },
+    {
+      "company": "C14",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не связаны со строительной деятельностью компании"
+    },
+    {
+      "company": "C15",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость кредитов и лизинга для добычи"
+    },
+    {
+      "company": "C15",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки, полезно для планирования"
+    },
+    {
+      "company": "C15",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля влияет на импорт оборудования, но экспорт выгоден"
+    },
+    {
+      "company": "C15",
+      "news_id": "n4",
+      "grade": 2,
+      "reason": "Рост цен металлов повышает затраты на технику и запчасти"
+    },
+    {
+      "company": "C15",
+      "news_id": "n5",
+      "grade": 0,
+      "reason": "Потребительский спрос не связан с добывающей отраслью"
+    },
+    {
+      "company": "C15",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Ипотека и новостройки не касаются горнодобывающей компании"
+    },
+    {
+      "company": "C15",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту, не влияет на решения"
+    },
+    {
+      "company": "C15",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ставку и зарплатные решения"
+    },
+    {
+      "company": "C15",
+      "news_id": "g2",
+      "grade": 1,
+      "reason": "Рост золота важен для добывающих драгметаллы компаний"
+    },
+    {
+      "company": "C15",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогом финансировании"
+    },
+    {
+      "company": "C15",
+      "news_id": "g4",
+      "grade": 2,
+      "reason": "Сталь дорожает — прямые затраты на оборудование и металлоконструкции"
+    },
+    {
+      "company": "C15",
+      "news_id": "g5",
+      "grade": 0,
+      "reason": "Розничные продажи не влияют на добывающий малый бизнес"
+    },
+    {
+      "company": "C15",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не относится к добыче полезных ископаемых"
+    },
+    {
+      "company": "C15",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с добычей полезных ископаемых"
+    },
+    {
+      "company": "C15",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не касаются горнодобывающей отрасли"
+    },
+    {
+      "company": "C16",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% напрямую влияет на кредиты, лизинг и гарантии компании"
+    },
+    {
+      "company": "C16",
+      "news_id": "n2",
+      "grade": 2,
+      "reason": "Сохранение высокой ставки означает дорогое финансирование для оптимизации"
+    },
+    {
+      "company": "C16",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля к юаню влияет на импорт сырья и оборудования"
+    },
+    {
+      "company": "C16",
+      "news_id": "n4",
+      "grade": 2,
+      "reason": "Рост цен на металлы повышает затраты металлообрабатывающего производства"
+    },
+    {
+      "company": "C16",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Потребительский спрос влияет на заказы, но косвенно для B2B"
+    },
+    {
+      "company": "C16",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Снижение спроса на новостройки не связано с отраслью компании"
+    },
+    {
+      "company": "C16",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту не влияет на решения"
+    },
+    {
+      "company": "C16",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции может смягчить давление на ставку и затраты"
+    },
+    {
+      "company": "C16",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не относится к деятельности и продуктам компании"
+    },
+    {
+      "company": "C16",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогом кредитовании"
+    },
+    {
+      "company": "C16",
+      "news_id": "g4",
+      "grade": 2,
+      "reason": "Рост цен на сталь напрямую увеличивает себестоимость производства"
+    },
+    {
+      "company": "C16",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно поддерживает спрос на продукцию"
+    },
+    {
+      "company": "C16",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не связано с металлообработкой"
+    },
+    {
+      "company": "C16",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не влияет на деятельность компании"
+    },
+    {
+      "company": "C16",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не относятся к отрасли компании"
+    },
+    {
+      "company": "C17",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость кредитов и условия РКО"
+    },
+    {
+      "company": "C17",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки, полезно для планирования"
+    },
+    {
+      "company": "C17",
+      "news_id": "n3",
+      "grade": 0,
+      "reason": "Курс юаня не влияет на бытовые услуги в Москве"
+    },
+    {
+      "company": "C17",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Металлы не относятся к сфере бытовых услуг"
+    },
+    {
+      "company": "C17",
+      "news_id": "n5",
+      "grade": 2,
+      "reason": "Рост потребительского спроса напрямую увеличивает выручку услуг"
+    },
+    {
+      "company": "C17",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Новостройки и ипотека не связаны с профилем компании"
+    },
+    {
+      "company": "C17",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка о транспорте, нерелевантна"
+    },
+    {
+      "company": "C17",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на покупательную способность клиентов"
+    },
+    {
+      "company": "C17",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью компании"
+    },
+    {
+      "company": "C17",
+      "news_id": "g3",
+      "grade": 1,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C17",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Цены на сталь не влияют на бытовые услуги"
+    },
+    {
+      "company": "C17",
+      "news_id": "g5",
+      "grade": 2,
+      "reason": "Рост розничных продаж отражает спрос на услуги населения"
+    },
+    {
+      "company": "C17",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается сферы услуг"
+    },
+    {
+      "company": "C17",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с профилем компании"
+    },
+    {
+      "company": "C17",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма и общепита косвенно отражает спрос на услуги"
+    },
+    {
+      "company": "C18",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость кредитов и лизинга транспорта"
+    },
+    {
+      "company": "C18",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки важен для планирования финансов"
+    },
+    {
+      "company": "C18",
+      "news_id": "n3",
+      "grade": 2,
+      "reason": "Ослабление рубля к юаню удорожает импорт запчастей и техники"
+    },
+    {
+      "company": "C18",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен на металлы косвенно влияет на стоимость транспорта"
+    },
+    {
+      "company": "C18",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Потребительский спрос поддерживает грузоперевозки и торговлю"
+    },
+    {
+      "company": "C18",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Снижение спроса на новостройки не связано с транспортом"
+    },
+    {
+      "company": "C18",
+      "news_id": "n8",
+      "grade": 1,
+      "reason": "Отраслевая сводка по грузоперевозкам полезна для бенчмаркинга"
+    },
+    {
+      "company": "C18",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ставки и издержки компании"
+    },
+    {
+      "company": "C18",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не относится к деятельности транспортной компании"
+    },
+    {
+      "company": "C18",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C18",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Рост цен на сталь и логистику повышает издержки перевозок"
+    },
+    {
+      "company": "C18",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж увеличивает объёмы грузоперевозок"
+    },
+    {
+      "company": "C18",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается транспортной отрасли"
+    },
+    {
+      "company": "C18",
+      "news_id": "g7",
+      "grade": 1,
+      "reason": "Рост урожая зерна увеличивает спрос на перевозки"
+    },
+    {
+      "company": "C18",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма повышает спрос на пассажирские перевозки"
+    },
+    {
+      "company": "C19",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость кредитов для агрокомпании"
+    },
+    {
+      "company": "C19",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки важен для планирования займов"
+    },
+    {
+      "company": "C19",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля влияет на экспортёров зерна косвенно"
+    },
+    {
+      "company": "C19",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен металлов повышает затраты на технику и запчасти"
+    },
+    {
+      "company": "C19",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Потребительский спрос косвенно влияет на цены продовольствия"
+    },
+    {
+      "company": "C19",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Спрос на новостройки не связан с агросектором"
+    },
+    {
+      "company": "C19",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Старая сводка о грузоперевозках неактуальна и неспецифична"
+    },
+    {
+      "company": "C19",
+      "news_id": "g1",
+      "grade": 2,
+      "reason": "Замедление инфляции и удешевление овощей прямо влияют на агросектор"
+    },
+    {
+      "company": "C19",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью агрокомпании"
+    },
+    {
+      "company": "C19",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C19",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Рост цен стали повышает затраты на технику и логистику"
+    },
+    {
+      "company": "C19",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно поддерживает спрос на продукцию"
+    },
+    {
+      "company": "C19",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не относится к агробизнесу"
+    },
+    {
+      "company": "C19",
+      "news_id": "g7",
+      "grade": 2,
+      "reason": "Рекордный урожай и экспортные пошлины прямо влияют на выручку"
+    },
+    {
+      "company": "C19",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не связаны с агропроизводством"
+    },
+    {
+      "company": "C20",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость кредитов и решений по оптимизации"
+    },
+    {
+      "company": "C20",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки полезен для планирования"
+    },
+    {
+      "company": "C20",
+      "news_id": "n3",
+      "grade": 0,
+      "reason": "Курс юаня не влияет: нет внешней торговли с Китаем"
+    },
+    {
+      "company": "C20",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Металлы не относятся к услугам и закупкам компании"
+    },
+    {
+      "company": "C20",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Потребительский спрос косвенно влияет на услуги бизнеса"
+    },
+    {
+      "company": "C20",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Недвижимость и ипотека не связаны с профилем компании"
+    },
+    {
+      "company": "C20",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка транспорта нерелевантна отрасли"
+    },
+    {
+      "company": "C20",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ставку и расходы"
+    },
+    {
+      "company": "C20",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью и продуктами компании"
+    },
+    {
+      "company": "C20",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогом финансировании"
+    },
+    {
+      "company": "C20",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Сталь не используется в профессиональных услугах"
+    },
+    {
+      "company": "C20",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж отражает спрос на услуги"
+    },
+    {
+      "company": "C20",
+      "news_id": "g6",
+      "grade": 1,
+      "reason": "ИТ-импортозамещение может быть полезно для оптимизации"
+    },
+    {
+      "company": "C20",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не относится к отрасли компании"
+    },
+    {
+      "company": "C20",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма и общепита косвенно расширяет клиентскую базу"
+    },
+    {
+      "company": "C21",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% напрямую влияет на стоимость лизинга и гарантий"
+    },
+    {
+      "company": "C21",
+      "news_id": "n2",
+      "grade": 2,
+      "reason": "Сохранение высокой ставки определяет расходы на финансирование и решения"
+    },
+    {
+      "company": "C21",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля к юаню влияет на импорт ПО и оборудования"
+    },
+    {
+      "company": "C21",
+      "news_id": "n4",
+      "grade": 0,
+      "reason": "Цены на металлы не связаны с ИТ-отраслью компании"
+    },
+    {
+      "company": "C21",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Рост потребления косвенно поддерживает спрос на ИТ-услуги"
+    },
+    {
+      "company": "C21",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Спрос на новостройки не относится к деятельности компании"
+    },
+    {
+      "company": "C21",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту нерелевантна ИТ-компании"
+    },
+    {
+      "company": "C21",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ожидания по ключевой ставке"
+    },
+    {
+      "company": "C21",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с ИТ-деятельностью и продуктами банка"
+    },
+    {
+      "company": "C21",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогом финансировании"
+    },
+    {
+      "company": "C21",
+      "news_id": "g4",
+      "grade": 0,
+      "reason": "Цены на сталь не влияют на ИТ-компанию"
+    },
+    {
+      "company": "C21",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно поддерживает деловой спрос"
+    },
+    {
+      "company": "C21",
+      "news_id": "g6",
+      "grade": 2,
+      "reason": "Прямо релевантно: ИТ-компания наращивает импортозамещающие решения"
+    },
+    {
+      "company": "C21",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с ИТ-отраслью компании"
+    },
+    {
+      "company": "C21",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не относятся к деятельности компании"
+    },
+    {
+      "company": "C22",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка 14% определяет стоимость кредитов и лизинга для МСБ"
+    },
+    {
+      "company": "C22",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз сохранения высокой ставки, полезно для планирования финансов"
+    },
+    {
+      "company": "C22",
+      "news_id": "n3",
+      "grade": 0,
+      "reason": "Компания в ЖКХ Москвы, внешняя торговля не указана"
+    },
+    {
+      "company": "C22",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен на металлы косвенно влияет на затраты на оборудование и ремонт"
+    },
+    {
+      "company": "C22",
+      "news_id": "n5",
+      "grade": 0,
+      "reason": "Потребительский спрос не влияет на коммунальные услуги"
+    },
+    {
+      "company": "C22",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Спрос на новостройки не связан с деятельностью компании"
+    },
+    {
+      "company": "C22",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту, не относится к отрасли"
+    },
+    {
+      "company": "C22",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на тарифы и общую экономическую среду"
+    },
+    {
+      "company": "C22",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью компании в ЖКХ"
+    },
+    {
+      "company": "C22",
+      "news_id": "g3",
+      "grade": 1,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C22",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Рост цен на сталь повышает стоимость ремонта и оборудования"
+    },
+    {
+      "company": "C22",
+      "news_id": "g5",
+      "grade": 0,
+      "reason": "Розничные продажи не влияют на коммунальные услуги"
+    },
+    {
+      "company": "C22",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не относится к сфере ЖКХ"
+    },
+    {
+      "company": "C22",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с деятельностью компании"
+    },
+    {
+      "company": "C22",
+      "news_id": "g8",
+      "grade": 0,
+      "reason": "Туризм и общепит не влияют на коммунальные услуги"
+    },
+    {
+      "company": "C23",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ключевая ставка определяет стоимость ипотеки и кредитов застройщика"
+    },
+    {
+      "company": "C23",
+      "news_id": "n2",
+      "grade": 2,
+      "reason": "Прогноз высокой ставки влияет на ипотечный спрос и финансирование"
+    },
+    {
+      "company": "C23",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля косвенно влияет на стройматериалы и оборудование"
+    },
+    {
+      "company": "C23",
+      "news_id": "n4",
+      "grade": 2,
+      "reason": "Металлы — ключевая статья затрат в строительстве"
+    },
+    {
+      "company": "C23",
+      "news_id": "n5",
+      "grade": 1,
+      "reason": "Потребительский спрос косвенно влияет на рынок недвижимости"
+    },
+    {
+      "company": "C23",
+      "news_id": "n7",
+      "grade": 2,
+      "reason": "Прямое падение спроса на новостройки из-за дорогой ипотеки"
+    },
+    {
+      "company": "C23",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту, не относится к недвижимости"
+    },
+    {
+      "company": "C23",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ожидания по ставке"
+    },
+    {
+      "company": "C23",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью застройщика"
+    },
+    {
+      "company": "C23",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогом финансировании"
+    },
+    {
+      "company": "C23",
+      "news_id": "g4",
+      "grade": 2,
+      "reason": "Рост цен на сталь напрямую увеличивает себестоимость строительства"
+    },
+    {
+      "company": "C23",
+      "news_id": "g5",
+      "grade": 1,
+      "reason": "Рост розничных продаж косвенно отражает экономическую активность"
+    },
+    {
+      "company": "C23",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не касается строительной отрасли"
+    },
+    {
+      "company": "C23",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с рынком недвижимости"
+    },
+    {
+      "company": "C23",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма и общепита косвенно влияет на коммерческую недвижимость"
+    },
+    {
+      "company": "C24",
+      "news_id": "n1",
+      "grade": 2,
+      "reason": "Ставка 14% определяет стоимость кредитов и лизинга для компании"
+    },
+    {
+      "company": "C24",
+      "news_id": "n2",
+      "grade": 1,
+      "reason": "Прогноз ставки полезен для планирования заимствований"
+    },
+    {
+      "company": "C24",
+      "news_id": "n3",
+      "grade": 1,
+      "reason": "Ослабление рубля влияет на импорт оборудования и запчастей"
+    },
+    {
+      "company": "C24",
+      "news_id": "n4",
+      "grade": 1,
+      "reason": "Рост цен металлов косвенно влияет на стоимость оборудования"
+    },
+    {
+      "company": "C24",
+      "news_id": "n5",
+      "grade": 0,
+      "reason": "Потребительский спрос не связан с энергетикой и B2B"
+    },
+    {
+      "company": "C24",
+      "news_id": "n7",
+      "grade": 0,
+      "reason": "Спрос на новостройки не влияет на энергокомпанию"
+    },
+    {
+      "company": "C24",
+      "news_id": "n8",
+      "grade": 0,
+      "reason": "Устаревшая сводка по транспорту неактуальна"
+    },
+    {
+      "company": "C24",
+      "news_id": "g1",
+      "grade": 1,
+      "reason": "Замедление инфляции влияет на ставку и тарифы"
+    },
+    {
+      "company": "C24",
+      "news_id": "g2",
+      "grade": 0,
+      "reason": "Золото не связано с деятельностью компании"
+    },
+    {
+      "company": "C24",
+      "news_id": "g3",
+      "grade": 2,
+      "reason": "Рост доходностей ОФЗ сигнализирует о дорогих кредитах"
+    },
+    {
+      "company": "C24",
+      "news_id": "g4",
+      "grade": 1,
+      "reason": "Рост цен стали повышает стоимость оборудования и труб"
+    },
+    {
+      "company": "C24",
+      "news_id": "g5",
+      "grade": 0,
+      "reason": "Розничные продажи не влияют на энергокомпанию"
+    },
+    {
+      "company": "C24",
+      "news_id": "g6",
+      "grade": 0,
+      "reason": "ИТ-импортозамещение не относится к энергетике"
+    },
+    {
+      "company": "C24",
+      "news_id": "g7",
+      "grade": 0,
+      "reason": "Агросектор не связан с энергетикой Краснодарского края"
+    },
+    {
+      "company": "C24",
+      "news_id": "g8",
+      "grade": 1,
+      "reason": "Рост туризма на юге повышает спрос на энергию"
+    }
+  ]
+}

@@ -60,7 +60,7 @@ class ApiTests(unittest.TestCase):
 
     def test_profile_explains_segment_and_tags(self):
         body = self.client.get("/v1/companies/U_1/profile").json()
-        self.assertEqual(body["segment_id"], "trade|mid")
+        self.assertEqual(body["segment_id"], "trade-mid")
         self.assertIn("factor:key_rate", body["tags"])
 
     def test_ws_banners_and_chat_with_progress(self):

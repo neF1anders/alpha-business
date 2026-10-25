@@ -24,7 +24,7 @@ class RerankerTests(unittest.TestCase):
 
     def test_product_modifier_boosts_key_rate_news(self):
         with_credit = self.rank([news(1, {"factor:key_rate"})])[0].score
-        no_credit = CompanyProfile("U_2", "trade|mid", PROFILE.tags - {"product:credit"})
+        no_credit = CompanyProfile("U_2", "trade-mid", PROFILE.tags - {"product:credit"})
         self.assertGreater(with_credit, self.rank([news(1, {"factor:key_rate"})], no_credit)[0].score)
 
     def test_fresh_and_primary_source_win_ties(self):
@@ -52,8 +52,8 @@ class RerankerTests(unittest.TestCase):
 
 class ProfileRulesTests(unittest.TestCase):
     def test_segment_is_sector_and_size(self):
-        self.assertEqual(segment_of({"sector:trade", "size:mid", "region:Москва"}), "trade|mid")
-        self.assertEqual(segment_of({"region:Москва"}), "unknown|unknown")
+        self.assertEqual(segment_of({"sector:trade", "size:mid", "region:Москва"}), "trade-mid")
+        self.assertEqual(segment_of({"region:Москва"}), "unknown-unknown")
 
     def test_features_only_from_confirmed_tags(self):
         feats = features_of({"sector:trade", "product:credit", "product:rko", "factor:fx"})
@@ -77,7 +77,7 @@ class CsvProfileRepositoryTests(unittest.IsolatedAsyncioTestCase):
             repo = CsvProfileRepository(self.write(tmp, [("U_1", "sector:trade", "sector"), ("U_1", "size:mid", "size"),
                                                          ("U_2", "sector:agro", "sector")]))
             profile = await repo.get("U_1")
-            self.assertEqual(profile.segment_id, "trade|mid")
+            self.assertEqual(profile.segment_id, "trade-mid")
             self.assertEqual(profile.tags, frozenset({"sector:trade", "size:mid"}))
             self.assertIsNone(await repo.get("U_404"))
 
