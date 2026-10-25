@@ -15,7 +15,6 @@ class BranchConfig(BaseModel):
     banner_ttl_h: dict[str, int] = Field(
         default_factory=lambda: {"rate": 168, "fx": 36, "labor": 120, "demand": 120})   # по срокам актуальности, eval/results/REPORT.md
     banner_ttl_default_h: int = Field(default=36, gt=0)
-    urgent_min_score: float = Field(default=0.85, ge=0, le=1)
     news_text_max_chars: int = Field(default=2000, gt=0)
     quote_max_chars: int = Field(default=200, gt=0)
     max_sources: int = Field(default=3, gt=0)

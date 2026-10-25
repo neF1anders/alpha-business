@@ -5,13 +5,14 @@ from datetime import datetime
 from typing import Callable, Optional
 
 from ..domain.models import (
-    Claim, CompanyContext, Confidence, ContentSignals, SegmentSummary, SourceRef, SummaryDraft, SummaryRequest,
+    Claim, ClusterSummary, CompanyContext, Confidence, ContentSignals, ExposurePath, SourceRef, SummaryDraft,
+    SummaryRequest,
 )
 from ..domain.scoring import company_confidence, content_signals
 
 
 class DefaultContentScorer:
-    """Сигналы сегмента (не зависят от компании). Заполняет Claim.grounding."""
+    """Сигналы кластера (не зависят от компании). Заполняет Claim.grounding."""
 
     def __init__(self, nli: Optional[Callable[[str, str], float]] = None) -> None:
         self._nli = nli
@@ -25,6 +26,7 @@ class DefaultConfidenceScorer:
     def __init__(self, calibrator: Optional[Callable[[float], float]] = None) -> None:
         self._calibrator = calibrator
 
-    def score(self, seg: SegmentSummary, company: CompanyContext, now: Optional[datetime] = None) -> Confidence:
+    def score(self, seg: ClusterSummary, company: CompanyContext, now: Optional[datetime] = None,
+              paths: Optional[list[ExposurePath]] = None) -> Confidence:
         return company_confidence(seg.signals, seg.lead, seg.topic, company, has_sources=bool(seg.sources),
-                                  now=now, calibrator=self._calibrator, severity=seg.severity)
+                                  now=now, calibrator=self._calibrator, severity=seg.severity, paths=paths)

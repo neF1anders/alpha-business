@@ -4,6 +4,7 @@ from factories import make_company, make_draft, make_news, make_req, make_segmen
 from summary_branch.application.composer import DefaultBannerComposer, make_banner_id
 from summary_branch.application.confidence import DefaultConfidenceScorer
 from summary_branch.domain.models import ClaimType, Decision, DraftClaim
+from summary_branch.application.personal import fallback_text
 from summary_branch.application.publisher import DefaultPublisher
 
 scorer = DefaultConfidenceScorer()
@@ -19,7 +20,7 @@ def decide(rerank_score=0.9, tags=("rate", "credit"), draft=None):
 
 
 def build(seg, company, confidence):
-    banner = composer.compose(seg, company, confidence)
+    banner = composer.compose(seg, company, confidence, fallback_text(seg, company, []))
     return banner, publisher.to_dto(banner, seg)
 
 
@@ -62,7 +63,7 @@ def test_no_sources_means_drop_and_no_banner():
     confidence = scorer.score(sourceless, company)
     assert confidence.decision == Decision.DROP
     with pytest.raises(ValueError):
-        composer.compose(sourceless, company, confidence)
+        composer.compose(sourceless, company, confidence, fallback_text(sourceless, company, []))
 
 
 def test_banner_id_is_deterministic_and_company_specific():
@@ -73,13 +74,14 @@ def test_banner_id_is_deterministic_and_company_specific():
 
 def test_expiry_follows_topic():
     seg, company, confidence = decide()
-    banner = composer.compose(seg, company, confidence)
+    text = fallback_text(seg, company, [])
+    banner = composer.compose(seg, company, confidence, text)
     assert round((banner.expires_at - banner.created_at).total_seconds() / 3600) == 168   # rate
-    fx = composer.compose(seg.model_copy(update={"topic": "fx"}), company, confidence)
+    fx = composer.compose(seg.model_copy(update={"topic": "fx"}), company, confidence, text)
     assert round((fx.expires_at - fx.created_at).total_seconds() / 3600) == 36
-    labor = composer.compose(seg.model_copy(update={"topic": "labor"}), company, confidence)
+    labor = composer.compose(seg.model_copy(update={"topic": "labor"}), company, confidence, text)
     assert round((labor.expires_at - labor.created_at).total_seconds() / 3600) == 120
-    other = composer.compose(seg.model_copy(update={"topic": "other"}), company, confidence)
+    other = composer.compose(seg.model_copy(update={"topic": "other"}), company, confidence, text)
     assert round((other.expires_at - other.created_at).total_seconds() / 3600) == 36
 
 

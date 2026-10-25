@@ -79,7 +79,7 @@ def test_for_you_render():
 
 
 def test_selection_diversity():
-    key = ContentKey(cluster_id="c", segment_id="s", prompt_version="v0")
+    key = ContentKey(cluster_id="c", prompt_version="v0")
 
     def mk(i, topic, sev):
         return Banner(banner_id=str(i), company_id="co1", key=key, topic=topic, severity=sev,

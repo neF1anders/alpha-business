@@ -3,9 +3,13 @@
 Принцип: у каждого факта одно место хранения.
   * SummaryRequest    — вход от оркестратора, живёт один вызов.
   * SummaryDraft      — что вернула LLM, живёт между S2 и S3, нигде не хранится.
-  * SegmentSummary    — ОБЩЕЕ содержимое для всех компаний сегмента (то, что дорого считать). Лежит в SegmentCache.
-  * Banner            — ЛИЧНОЕ для компании: строка «для вас», уверенность, срок. Лежит в BannerStore.
-  * BannerDTO         — то, что видит фронт; собирается из Banner + SegmentSummary, хранится только как готовая выдача.
+  * ClusterSummary    — ОБЩЕЕ содержимое кластера новостей для всех компаний: факты и карта влияния на отрасли
+                        (один вызов LLM на кластер). Лежит в SummaryCache.
+  * ExposurePath      — путь влияния новости на компанию: своя отрасль, продукт, ВЭД, поставщики, покупатели, связанные
+                        компании. Считается детерминированно из ClusterSummary и профиля, нигде не хранится.
+  * Banner            — ЛИЧНОЕ для компании: заголовок и строка «для вас» по путям влияния, уверенность, срок.
+                        Лежит в BannerStore.
+  * BannerDTO         — то, что видит фронт; собирается из Banner + ClusterSummary, хранится только как готовая выдача.
 """
 from __future__ import annotations
 
@@ -84,11 +88,27 @@ class FlowRole(str, Enum):
 _REVENUE_PLACEHOLDER = 1000.0
 
 
+class CounterpartySector(BaseModel):
+    """Контрагенты одной отрасли с одной стороны потока: поставщики (компания платит) или покупатели (платят ей)."""
+    division: str                                    # раздел ОКВЭД, «24»
+    name: str = ""                                   # название раздела или самого частого ОКВЭД отрасли
+    share: float = Field(ge=0, le=1)                 # доля суммы потока этой стороны
+    counterparties: int = Field(default=0, ge=0)
+    foreign_trade_share: float = Field(default=0.0, ge=0, le=1)   # доля суммы с контрагентами, у которых есть ВЭД
+
+
 class PaymentProfile(BaseModel):
-    """Агрегаты платёжного графа. Идентификаторов, названий и сумм контрагентов здесь нет и быть не должно."""
+    """Агрегаты платёжного графа без переводов внутри группы и между связанными компаниями.
+
+    Идентификаторов, названий и сумм контрагентов здесь нет и быть не должно: только отрасли и доли.
+    """
     counterparty_sectors: dict[str, float] = Field(default_factory=dict)   # раздел ОКВЭД ("46") -> доля контрагентов
     counterparty_count_band: str = ""
     flow_role: FlowRole = FlowRole.BALANCED
+    suppliers: list[CounterpartySector] = Field(default_factory=list)       # по убыванию доли
+    buyers: list[CounterpartySector] = Field(default_factory=list)
+    top_supplier_share: float = Field(default=0.0, ge=0, le=1)              # концентрация на одном поставщике
+    top_buyer_share: float = Field(default=0.0, ge=0, le=1)
 
 
 class CompanyProfile(BaseModel):
@@ -108,6 +128,7 @@ class CompanyProfile(BaseModel):
     negative_flag: bool = False
     group_id: str = ""                               # только как ключ группировки, в промпт и логи не идёт
     payments: Optional[PaymentProfile] = None
+    affiliate_sectors: list[str] = Field(default_factory=list)   # разделы ОКВЭД компаний группы и связанных через общих лиц
 
     @field_validator("okved_code")
     @classmethod
@@ -136,7 +157,7 @@ class UserContext(BaseModel):
 # --------------------------------------------------------------------------- 1. вход от оркестратора
 class CompanyContext(BaseModel):
     company_id: str
-    segment_id: str                                  # ключ сегментного кэша; рекомендуемое правило: personalization.segment_signature
+    segment_id: str = ""                             # сегмент оркестратора: только для логов и аналитики, кэш от него не зависит
     role: str = "cfo"
     tags: list[str] = Field(default_factory=list)    # машинные теги: макрофакторы, отрасль, география (для матчинга с новостью)
     features: list[str] = Field(default_factory=list)  # человекочитаемые признаки для строки «для вас»: «3 кредитных продукта»
@@ -195,6 +216,20 @@ class DraftClaim(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)   # news_id или doc_id из запроса
 
 
+class ImpactDirection(str, Enum):
+    NEGATIVE = "negative"
+    POSITIVE = "positive"
+    MIXED = "mixed"
+
+
+class SectorImpactDraft(BaseModel):
+    """Какую отрасль затрагивает новость и как. Отрасль — двузначный раздел ОКВЭД."""
+    division: str
+    direction: ImpactDirection
+    mechanism: str                                   # <= 160 символов: через что именно новость действует на отрасль
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
 class SummaryDraft(BaseModel):
     """Формат структурного ответа LLM (S2). После S3 не хранится."""
     headline: str                                    # <= 60 символов
@@ -204,6 +239,9 @@ class SummaryDraft(BaseModel):
     severity: Severity
     claims: list[DraftClaim]
     follow_ups: list[str] = Field(default_factory=list)   # только для chat
+    impacts: list[SectorImpactDraft] = Field(default_factory=list)   # только для banner: карта влияния на отрасли
+    countries: list[str] = Field(default_factory=list)   # страны, о которых новость, заглавными как в данных ФТС
+    regions: list[str] = Field(default_factory=list)     # регионы России, о которых новость
 
 
 class EvidenceRef(BaseModel):
@@ -222,6 +260,43 @@ class SourceRef(BaseModel):
     kind: SourceKind
     title: str
     url: str
+    ref_id: str = ""                                 # news_id или doc_id: связывает EvidenceRef.ref_id с источником
+
+
+class SectorImpact(BaseModel):
+    """Проверенный элемент карты влияния: отрасль из ОКВЭД, механизм с опорой на новость."""
+    division: str
+    direction: ImpactDirection
+    mechanism: str
+    evidence_ids: list[str]
+
+
+class ExposureKind(str, Enum):
+    OWN_SECTOR = "own_sector"        # новость про отрасль самой компании
+    PRODUCT = "product"              # макрофактор бьёт по продукту банка у компании (кредит и ставка)
+    MACRO = "macro"                  # макрофактор, к которому чувствителен профиль (ВЭД и курс, штат и рынок труда)
+    FOREIGN_TRADE = "foreign_trade"  # новость про страну ВЭД компании
+    REGION = "region"                # новость про регион компании
+    SUPPLIERS = "suppliers"          # затронута отрасль поставщиков
+    BUYERS = "buyers"                # затронута отрасль покупателей
+    AFFILIATES = "affiliates"        # затронута отрасль компаний группы или связанных через общих лиц
+
+
+class ExposurePath(BaseModel):
+    """Одно объяснимое основание, почему новость касается компании."""
+    path_id: str                                     # «p1», «p2»: на него ссылается персональный текст
+    kind: ExposureKind
+    weight: float = Field(ge=0, le=1)
+    explanation: str                                 # готовая фраза без имён и сумм: «поставщики из металлургии — 34% платежей»
+    mechanism: str = ""                              # как новость действует на это звено (из карты влияния)
+    hypothesis: bool = False                         # связь выведена из платежей: это гипотеза, а не факт
+
+
+class PersonalDraft(BaseModel):
+    """Ответ LLM на персональный шаг: текст баннера для одной компании по её путям влияния."""
+    headline: str                                    # <= 60 символов
+    for_you: str                                     # <= 200 символов, 1-2 предложения
+    path_ids: list[str] = Field(default_factory=list)   # на какие пути влияния опирается текст
 
 
 class LeadRef(BaseModel):
@@ -250,12 +325,11 @@ class ContentSignals(BaseModel):
 
 class ContentKey(BaseModel, frozen=True):
     cluster_id: str
-    segment_id: str
     prompt_version: str
 
 
-class SegmentSummary(BaseModel):
-    """Общее содержимое. Один экземпляр на (cluster, segment, prompt_version), на него ссылаются баннеры."""
+class ClusterSummary(BaseModel):
+    """Общее содержимое. Один экземпляр на (cluster, prompt_version), на него ссылаются баннеры всех компаний."""
     key: ContentKey
     model_id: str
     headline: str
@@ -267,6 +341,9 @@ class SegmentSummary(BaseModel):
     sources: list[SourceRef]
     lead: LeadRef
     signals: ContentSignals
+    impacts: list[SectorImpact] = Field(default_factory=list)
+    countries: list[str] = Field(default_factory=list)
+    regions: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -293,9 +370,10 @@ class Banner(BaseModel):
     banner_id: str
     company_id: str
     key: ContentKey
-    topic: str                                       # копия из SegmentSummary: нужна для разнообразия без чтения кэша
+    topic: str                                       # копия из ClusterSummary: нужна для разнообразия без чтения кэша
     severity: Severity                               # то же, нужна для приоритета
-    for_you: str                                     # уже подставленная строка (единственное личное «содержимое»)
+    headline: str = ""                               # личный заголовок; пусто — общий заголовок кластера
+    for_you: str                                     # личная строка «для вас» по путям влияния
     confidence: float = Field(ge=0, le=1)
     decision: Decision
     created_at: datetime = Field(default_factory=utcnow)
@@ -305,9 +383,13 @@ class Banner(BaseModel):
         return (now or utcnow()) >= self.expires_at
 
 
+HIDDEN_REASON = "hidden"   # причина «скрыть» без негативной обратной связи; любая другая — «не про меня»
+
+
 class BannerDTO(BaseModel):
-    """Готовая выдача для BFF. Производная сущность: пересобирается из Banner + SegmentSummary."""
+    """Готовая выдача для BFF. Производная сущность: пересобирается из Banner + ClusterSummary."""
     banner_id: str
+    cluster_id: str = ""                             # по нему оркестратор заменяет баннер «только новость» готовым
     severity: Severity
     label: str                                       # «Внимание · ставка»
     headline: str

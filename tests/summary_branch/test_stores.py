@@ -6,7 +6,7 @@ from summary_branch.domain.models import (
 import pytest
 
 from summary_branch.infrastructure.sqlite_store import SqliteBannerStore
-from summary_branch.infrastructure.stores import InMemoryBannerStore, InMemorySegmentCache
+from summary_branch.infrastructure.stores import InMemoryBannerStore, InMemorySummaryCache
 
 
 @pytest.fixture(params=["memory", "sqlite"])
@@ -26,8 +26,8 @@ def new_store(request, tmp_path):
 
 
 
-def key(cluster="c1", segment="s"):
-    return ContentKey(cluster_id=cluster, segment_id=segment, prompt_version="v1")
+def key(cluster="c1"):
+    return ContentKey(cluster_id=cluster, prompt_version="v1")
 
 
 def banner(bid, topic="rate", company="co1", cluster="c1", confidence=0.9, severity=Severity.ATTENTION,
@@ -115,7 +115,7 @@ def test_invalidate_cluster_removes_for_all_companies_and_counts(new_store):
 
 def test_segment_cache_ttl_and_hit_counter():
     now = [utcnow()]
-    cache = InMemorySegmentCache(clock=lambda: now[0])
+    cache = InMemorySummaryCache(clock=lambda: now[0])
     k = key()
     assert cache.get(k) is None
     item = _summary(k)
@@ -127,11 +127,11 @@ def test_segment_cache_ttl_and_hit_counter():
 
 
 def _summary(k):
-    from summary_branch.domain.models import ContentSignals, LeadRef, SegmentSummary
+    from summary_branch.domain.models import ContentSignals, LeadRef, ClusterSummary
     signals = ContentSignals(grounding=1, source_quality=1, claim_mix=1, faithfulness=1, coverage=1,
                              specificity=1, brevity=1, structure_ok=True, sqs=1)
     lead = LeadRef(cluster_id=k.cluster_id, published_at=utcnow(), rerank_score=0.5)
-    return SegmentSummary(key=k, model_id="m", headline="h", for_you_template="", for_you_fallback="f", topic="rate",
+    return ClusterSummary(key=k, model_id="m", headline="h", for_you_template="", for_you_fallback="f", topic="rate",
                           severity=Severity.WATCH, claims=[], sources=[], lead=lead, signals=signals)
 
 
@@ -161,7 +161,7 @@ def test_returned_objects_are_copies(new_store):
     store.top_k("co1", 1)[0].headline = "испорчено"
     assert store.top_k("co1", 1)[0].headline == "a"
 
-    cache = InMemorySegmentCache()
+    cache = InMemorySummaryCache()
     k = key()
     cache.put(_summary(k), ttl_s=60)
     cache.get(k).headline = "испорчено"
@@ -194,13 +194,13 @@ def test_concurrent_access_does_not_break_store(new_store):
     assert len(store.top_k("co1", 3)) <= 3
 
 
-def test_segment_cache_invalidate_cluster_drops_all_segments_and_versions():
-    cache = InMemorySegmentCache()
-    keys = [ContentKey(cluster_id="c1", segment_id=s, prompt_version=v) for s in ("a", "b") for v in ("v1", "v2")]
-    other = ContentKey(cluster_id="c2", segment_id="a", prompt_version="v1")
+def test_summary_cache_invalidate_cluster_drops_all_prompt_versions():
+    cache = InMemorySummaryCache()
+    keys = [ContentKey(cluster_id="c1", prompt_version=v) for v in ("v1", "v2")]
+    other = ContentKey(cluster_id="c2", prompt_version="v1")
     for k in (*keys, other):
         cache.put(_summary(k), ttl_s=60)
-    assert cache.invalidate_cluster("c1") == 4
+    assert cache.invalidate_cluster("c1") == 2
     assert all(cache.get(k) is None for k in keys) and cache.get(other) is not None
     assert cache.invalidate_cluster("c1") == 0
 
@@ -235,3 +235,21 @@ def test_sqlite_store_keeps_same_banner_id_separate_per_company(new_store):
     store.put(first, dto(first).model_copy(update={"headline": "first"}))
     store.put(second, dto(second).model_copy(update={"headline": "second"}))
     assert store.get("co1", "a").headline == "first" and store.get("co2", "a").headline == "second"
+
+
+def test_hide_removes_banner_without_negative_feedback_and_counts_it(new_store):
+    store = new_store()
+    put(store, banner("a1"), banner("w1", topic="fx", severity=Severity.WATCH), banner("n1", topic="labor"),
+        banner("old", topic="demand", expires_in_h=-1))
+    store.hide("co1", "a1")
+    store.suppress("co1", "n1", "не про меня")
+    assert store.is_hidden("co1", "a1") and store.is_hidden("co1", "n1") and not store.is_hidden("co1", "w1")
+    assert ids(store.top_k("co1", 3)) == ["w1"]
+    assert store.counts("co1") == {"attention": 0, "watch": 1, "opportunity": 0, "hidden": 1}
+
+
+def test_counts_cover_all_live_banners_not_only_top_k(new_store):
+    store = new_store()
+    put(store, *(banner(f"b{i}", topic=f"t{i}") for i in range(5)))
+    assert len(store.top_k("co1", 3)) == 3
+    assert store.counts("co1")["attention"] == 5

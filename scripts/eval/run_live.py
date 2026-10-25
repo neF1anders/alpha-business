@@ -16,7 +16,8 @@ from budget import BudgetGuard, BudgetStop, allowed_calls
 from cases import banks_for, best_company
 from dataset import DATA_DIR, load_bank, load_bank_topics, load_companies, load_news, read_jsonl
 from summary_branch.bootstrap import build_branch
-from summary_branch.infrastructure.fakes import StaticDirectory
+from summary_branch.application.confidence import DefaultConfidenceScorer
+from summary_branch.domain.exposure import exposure_paths
 from summary_branch.infrastructure.llm_gateway import GatewaySettings, OpenAICompatibleLLMClient
 from summary_branch.domain.models import ContentKey, Mode, SummaryRequest
 from summary_branch.domain.scoring import _evidence_text, _numbers, _stems
@@ -65,7 +66,7 @@ def run_chat(llm, guard: BudgetGuard, cases: list[dict], repeats: int, out: Path
             req = SummaryRequest(trace_id=f"{case['case_id']}-{repeat}", mode=Mode.CHAT, question=case["question"],
                                  company=company.company, news=cluster_of(case["news_id"]),
                                  bank_materials=banks_for(news, BANK, BANK_TOPICS))
-            rt = build_branch(llm, StaticDirectory([company.company]))
+            rt = build_branch(llm)
             calls0 = llm.calls
             started = time.monotonic()
             answer = rt.branch.handle_chat(req)
@@ -95,17 +96,19 @@ def run_banner(llm, guard: BudgetGuard, out: Path, limit: int | None = None) -> 
         company = best_company(row, list(COMPANIES.values()))
         req = SummaryRequest(trace_id=f"b-{cluster_id}", mode=Mode.BANNER, company=company.company,
                              news=cluster_of(row.item.news_id), bank_materials=banks_for(row, BANK, BANK_TOPICS))
-        rt = build_branch(llm, StaticDirectory([company.company]))
+        rt = build_branch(llm)
         calls0 = llm.calls
         started = time.monotonic()
-        banners = rt.branch.handle_banner(req)
+        dto = rt.branch.banner(req)
         elapsed = time.monotonic() - started
-        key = ContentKey(cluster_id=cluster_id, segment_id=company.company.segment_id, prompt_version="v1")
-        seg = rt.cache.get(key)
+        seg = rt.cache.get(ContentKey(cluster_id=cluster_id, prompt_version="v1"))
+        confidence = (DefaultConfidenceScorer().score(seg, company.company, paths=exposure_paths(seg, company.company))
+                      if seg and company.company.profile else DefaultConfidenceScorer().score(seg, company.company)
+                      if seg else None)
         append(out, {"cluster_id": cluster_id, "news_id": row.item.news_id, "topic": row.topic, "seconds": round(elapsed, 2),
-                     "calls": llm.calls - calls0, "banner": bool(banners),
-                     "decision": banners[0].decision.value if banners else None,
-                     "confidence": banners[0].confidence if banners else None,
+                     "calls": llm.calls - calls0, "banner": dto is not None,
+                     "decision": confidence.decision.value if dto and confidence else None,
+                     "confidence": confidence.score if dto and confidence else None,
                      "signals": seg.signals.model_dump() if seg else None,
                      "claims": claim_stats(seg.claims, req) if seg else [],
                      "all_claims": [{"type": c.type.value, "text": c.text} for c in seg.claims] if seg else [],

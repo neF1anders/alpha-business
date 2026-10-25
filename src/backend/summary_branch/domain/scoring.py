@@ -12,11 +12,13 @@ import re
 from datetime import datetime
 from typing import Callable, Optional
 
-from ..domain.models import (
-    Banner, Claim, ClaimType, CompanyContext, Confidence, ConfidenceComponents, ContentSignals,
-    Decision, LeadRef, RankedNewsItem, Relationship, Severity, SourceKind, SourceRef, SummaryDraft, SummaryRequest, utcnow,
+from .exposure import indirect_weight, personal_exposure
+from .models import (
+    HIDDEN_REASON, Banner, Claim, ClaimType, CompanyContext, CompanyProfile, Confidence, ConfidenceComponents, ContentSignals,
+    Decision, ExposureKind, ExposurePath, LeadRef, RankedNewsItem, Relationship, Severity, SourceKind, SourceRef,
+    SummaryDraft, SummaryRequest, utcnow,
 )
-from ..domain.personalization import indirect_exposure, news_sectors, sector_match, topic_exposure
+from .personalization import indirect_exposure, news_sectors, sector_match, topic_exposure
 
 # --------------------------------------------------------------------------- параметры (вынести в конфиг)
 SOURCE_PRIOR = {SourceKind.PRIMARY: 1.0, SourceKind.BANK: 0.9, SourceKind.MEDIA: 0.6}
@@ -168,23 +170,23 @@ def _region_match(company: CompanyContext, news_tags: list[str]) -> float:
 
 
 def _relevance(lead: LeadRef, topic: str, company: CompanyContext, reasons: list[str],
-               requested_by_user: bool) -> tuple[float, Optional[float]]:
-    """(релевантность, чувствительность к теме или None). Без профиля или без тем и отраслей новости работает по тегам."""
+               requested_by_user: bool, paths: Optional[list[ExposurePath]]) -> tuple[float, Optional[float]]:
+    """(релевантность, чувствительность к теме или None). Без профиля или без тем и отраслей новости работает по тегам.
+
+    С путями влияния чувствительность — их «шумное ИЛИ»: учитывает отрасль, продукты, ВЭД, регион и контрагентов.
+    """
     tag_match = tag_overlap(company.tags, lead.tags)
     profile = company.profile
     legacy = _clip(0.6 * lead.rerank_score + 0.4 * tag_match)
     if profile is None:
         return legacy, None
-    sectors = news_sectors(lead.tags)
-    direct = sector_match(profile, sectors)
-    indirect = indirect_exposure(profile, sectors)
-    exposures = topic_exposure(profile)
-    if topic in exposures:
-        exposure = max(exposures[topic].value, 1.0 if direct else 0.0, indirect)
-    elif sectors:                                    # отраслевая новость вне макротем: важна «своей» и связанным отраслям
-        exposure = 1.0 if direct else indirect
+    if paths is not None:
+        exposure, indirect = personal_exposure(paths), indirect_weight(paths)
+        direct = any(p.kind == ExposureKind.OWN_SECTOR for p in paths)
     else:
-        return legacy, None
+        exposure, indirect, direct = _profile_exposure(lead, topic, profile)
+        if exposure is None:
+            return legacy, None
     if exposure < EXPOSURE_FLOOR and indirect == 0 and not requested_by_user:
         reasons.append(f"компания не чувствительна к теме «{topic}»")
     w = PROFILE_WEIGHTS
@@ -194,14 +196,33 @@ def _relevance(lead: LeadRef, topic: str, company: CompanyContext, reasons: list
     return _clip(relevance), exposure
 
 
+def _profile_exposure(lead: LeadRef, topic: str, profile: CompanyProfile) -> tuple[Optional[float], float, bool]:
+    """Чувствительность без карты влияния: по теме кластера и отраслевым тегам новости."""
+    sectors = news_sectors(lead.tags)
+    direct = sector_match(profile, sectors)
+    indirect = indirect_exposure(profile, sectors)
+    exposures = topic_exposure(profile)
+    if topic in exposures:
+        exposure = max(exposures[topic].value, 1.0 if direct else 0.0, indirect)
+    elif sectors:                                    # отраслевая новость вне макротем: важна «своей» и связанным отраслям
+        exposure = 1.0 if direct else indirect
+    else:
+        return None, indirect, direct
+    return exposure, indirect, direct
+
+
 def company_confidence(signals: ContentSignals, lead: LeadRef, topic: str, company: CompanyContext,
                        has_sources: bool = True, now: Optional[datetime] = None,
                        calibrator: Optional[Callable[[float], float]] = None,
-                       severity: Optional[Severity] = None, requested_by_user: bool = False) -> Confidence:
-    """requested_by_user: вопрос задал сам пользователь (чат), поэтому «не про вас» не понижает оценку."""
+                       severity: Optional[Severity] = None, requested_by_user: bool = False,
+                       paths: Optional[list[ExposurePath]] = None) -> Confidence:
+    """requested_by_user: вопрос задал сам пользователь (чат), поэтому «не про вас» не понижает оценку.
+
+    paths: пути влияния кластера на компанию; без них чувствительность считается по теме и тегам новости.
+    """
     now = now or utcnow()
     reasons: list[str] = []
-    relevance, exposure = _relevance(lead, topic, company, reasons, requested_by_user)
+    relevance, exposure = _relevance(lead, topic, company, reasons, requested_by_user, paths)
     off_topic = any(r.startswith("компания не чувствительна") for r in reasons)
     fresh = freshness(lead.published_at, now, topic)
     comp = ConfidenceComponents(relevance=relevance, grounding=signals.grounding,
@@ -290,6 +311,19 @@ def banner_priority(b: Banner, now: Optional[datetime] = None, seen: bool = Fals
     hrs = max((now - b.created_at).total_seconds() / 3600.0, 0.0)
     fresh = 0.5 ** (hrs / HALF_LIFE_H.get(b.topic, HALF_LIFE_H["default"]))
     return round(base_priority(b.severity.value, b.confidence) * fresh * (0.4 if seen else 1.0), 4)
+
+
+def banner_counts(live: list[Banner], suppressed: dict[str, str]) -> dict[str, int]:
+    """Счётчики панели по всем актуальным баннерам: видимые по severity и отдельно скрытые кнопкой «Скрыть»."""
+    counts = {severity.value: 0 for severity in Severity}
+    counts["hidden"] = 0
+    for banner in live:
+        reason = suppressed.get(banner.banner_id)
+        if reason is None:
+            counts[banner.severity.value] += 1
+        elif reason == HIDDEN_REASON:
+            counts["hidden"] += 1
+    return counts
 
 
 def pick_top_k(banners: list[Banner], k: int = 3, now: Optional[datetime] = None,

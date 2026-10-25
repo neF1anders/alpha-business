@@ -10,23 +10,23 @@ import threading
 from datetime import datetime, timedelta
 from typing import Callable, Optional
 
-from ..domain.models import Banner, BannerDTO, ContentKey, SegmentSummary, utcnow
-from ..domain.scoring import pick_top_k
+from ..domain.models import HIDDEN_REASON, Banner, BannerDTO, ClusterSummary, ContentKey, utcnow
+from ..domain.scoring import banner_counts, pick_top_k
 
 log = logging.getLogger(__name__)
 
 
-class InMemorySegmentCache:
+class InMemorySummaryCache:
     """Общее содержимое сегмента. Состояния нет, только TTL."""
 
     def __init__(self, clock: Callable[[], datetime] = utcnow) -> None:
         self._clock = clock
         self._lock = threading.RLock()
-        self._items: dict[ContentKey, tuple[SegmentSummary, datetime]] = {}
+        self._items: dict[ContentKey, tuple[ClusterSummary, datetime]] = {}
         self.hits = 0
         self.misses = 0
 
-    def get(self, key: ContentKey) -> Optional[SegmentSummary]:
+    def get(self, key: ContentKey) -> Optional[ClusterSummary]:
         with self._lock:
             entry = self._items.get(key)
             if entry is not None and self._clock() >= entry[1]:
@@ -38,7 +38,7 @@ class InMemorySegmentCache:
             self.hits += 1
             return entry[0].model_copy(deep=True)
 
-    def put(self, item: SegmentSummary, ttl_s: int) -> None:
+    def put(self, item: ClusterSummary, ttl_s: int) -> None:
         with self._lock:
             now = self._clock()
             self._items = {k: v for k, v in self._items.items() if now < v[1]}   # заодно чистим просроченное
@@ -99,10 +99,24 @@ class InMemoryBannerStore:
             if banner_id in self._banners.get(company_id, {}):
                 self._seen.setdefault(company_id, set()).add(banner_id)
 
+    def is_hidden(self, company_id: str, banner_id: str) -> bool:
+        with self._lock:
+            return banner_id in self._suppressed.get(company_id, {})
+
+    def counts(self, company_id: str, now: Optional[datetime] = None) -> dict[str, int]:
+        now = now or utcnow()
+        with self._lock:
+            hidden = self._suppressed.get(company_id, {})
+            live = [b for b in self._banners.get(company_id, {}).values() if not b.is_expired(now)]
+            return banner_counts(live, hidden)
+
     def suppress(self, company_id: str, banner_id: str, reason: str) -> None:
         with self._lock:
             self._suppressed.setdefault(company_id, {})[banner_id] = reason
         log.info("баннер скрыт: company=%s banner=%s reason=%s", company_id, banner_id, reason)
+
+    def hide(self, company_id: str, banner_id: str) -> None:
+        self.suppress(company_id, banner_id, HIDDEN_REASON)
 
     def invalidate_cluster(self, cluster_id: str, reason: str) -> int:
         removed = 0

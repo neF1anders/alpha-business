@@ -60,15 +60,15 @@ def make_draft(claims=None, **kw):
 
 
 def make_segment(req, draft=None):
-    """Сегментное саммари как его собрал бы SegmentBuilder (без кэша и LLM)."""
+    """Саммари кластера как его собрал бы ClusterSummaryBuilder (без кэша и LLM)."""
     from summary_branch.application.binder import DefaultEvidenceBinder
     from summary_branch.application.confidence import DefaultContentScorer
-    from summary_branch.domain.models import ContentKey, SegmentSummary
+    from summary_branch.domain.models import ContentKey, ClusterSummary
     from summary_branch.domain.scoring import lead_from_news
     draft = draft or make_draft()
     claims, sources = DefaultEvidenceBinder().bind(draft, req)
     signals = DefaultContentScorer().score(req, draft, claims, sources)
-    key = ContentKey(cluster_id=req.news[0].cluster_id, segment_id=req.company.segment_id, prompt_version="v1")
-    return SegmentSummary(key=key, model_id="test", headline=draft.headline, for_you_template=draft.for_you_template,
+    key = ContentKey(cluster_id=req.news[0].cluster_id, prompt_version="v1")
+    return ClusterSummary(key=key, model_id="test", headline=draft.headline, for_you_template=draft.for_you_template,
                           for_you_fallback=draft.for_you_fallback, topic=draft.topic, severity=draft.severity,
                           claims=claims, sources=sources, lead=lead_from_news(req.news[0]), signals=signals)

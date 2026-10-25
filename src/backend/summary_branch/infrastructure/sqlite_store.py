@@ -12,8 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from ..domain.models import Banner, BannerDTO, utcnow
-from ..domain.scoring import pick_top_k
+from ..domain.models import HIDDEN_REASON, Banner, BannerDTO, utcnow
+from ..domain.scoring import banner_counts, pick_top_k
 
 log = logging.getLogger(__name__)
 
@@ -113,11 +113,27 @@ class SqliteBannerStore:
                 "SELECT company_id, banner_id FROM banners WHERE company_id=? AND banner_id=?",
                 (company_id, banner_id))
 
+    def is_hidden(self, company_id: str, banner_id: str) -> bool:
+        with self._lock:
+            return self._is_suppressed(company_id, banner_id)
+
+    def counts(self, company_id: str, now: Optional[datetime] = None) -> dict[str, int]:
+        now = now or utcnow()
+        with self._lock:
+            rows = self._conn.execute("SELECT banner_json FROM banners WHERE company_id=? AND expires_ts>?",
+                                      (company_id, now.timestamp())).fetchall()
+            suppressed = dict(self._conn.execute("SELECT banner_id, reason FROM suppressed WHERE company_id=?",
+                                                 (company_id,)).fetchall())
+        return banner_counts([Banner.model_validate_json(r[0]) for r in rows], suppressed)
+
     def suppress(self, company_id: str, banner_id: str, reason: str) -> None:
         with self._lock, self._conn:
             self._conn.execute("INSERT OR REPLACE INTO suppressed (company_id, banner_id, reason) VALUES (?, ?, ?)",
                                (company_id, banner_id, reason))
         log.info("баннер скрыт: company=%s banner=%s reason=%s", company_id, banner_id, reason)
+
+    def hide(self, company_id: str, banner_id: str) -> None:
+        self.suppress(company_id, banner_id, HIDDEN_REASON)
 
     def invalidate_cluster(self, cluster_id: str, reason: str) -> int:
         with self._lock, self._conn:

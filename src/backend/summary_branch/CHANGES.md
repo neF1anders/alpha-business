@@ -4,13 +4,13 @@
 
 - `BannerStore.put` возвращает `bool` (`True`, если `banner_id` новый для компании). Пуш срочного баннера только при `True`.
 - `BankMaterialRef.url` обязателен (`str`).
-- `SegmentCache.invalidate_cluster(cluster_id) -> int`; `BranchRuntime.invalidate_cluster` сбрасывает кэш и баннеры.
+- `SummaryCache.invalidate_cluster(cluster_id) -> int`; `BranchRuntime.invalidate_cluster` сбрасывает кэш и баннеры.
 - `scoring.render_for_you`: пустой шаблон «для вас» даёт `fallback`, а не пустую строку.
 
 Вход через `handle` и проверка внутри ветки (по указанию владельца):
 
 - Добавлены `SummaryBranch.handle(req) -> list[BannerDTO] | ChatAnswer` и `BannerStore.get(company_id, banner_id) -> Optional[BannerDTO]`. Оркестратор не оценивает результат и не зацикливает ветку.
-- Добавлен `generator.py` (`ValidatedGenerator`): проверка и повтор генерации. `SegmentBuilder` и `DefaultSummaryBranch` теперь принимают генератор вместо summarizer, binder и content_scorer.
+- Добавлен `generator.py` (`ValidatedGenerator`): проверка и повтор генерации. `ClusterSummaryBuilder` и `DefaultSummaryBranch` теперь принимают генератор вместо summarizer, binder и content_scorer.
 - `BranchConfig`: `max_generation_attempts=2`, `min_grounding=0.6`.
 - `handle_banner` и `handle_chat` сохранены. Повтор генерации действует и на них.
 - Баннер с `raw_news`, сохранённый после исчерпанных попыток, считается готовым и отдаётся без новой генерации до истечения срока.

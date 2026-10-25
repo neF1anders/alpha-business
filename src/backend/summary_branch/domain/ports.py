@@ -4,9 +4,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional, Protocol, runtime_checkable
 
-from ..domain.models import (
-    Banner, BannerDTO, ChatAnswer, Claim, CompanyContext, Confidence, ContentKey,
-    ContentSignals, SegmentSummary, SourceRef, SummaryDraft, SummaryRequest,
+from .models import (
+    Banner, BannerDTO, ChatAnswer, Claim, ClusterSummary, CompanyContext, Confidence, ContentKey, ContentSignals,
+    ExposurePath, SourceRef, SummaryDraft, SummaryRequest,
 )
 
 
@@ -38,30 +38,17 @@ class ContentScorer(Protocol):
 
 @runtime_checkable
 class ConfidenceScorer(Protocol):
-    def score(self, seg: SegmentSummary, company: CompanyContext,
-              now: Optional[datetime] = None) -> Confidence:
-        """S5. Складывает ContentSignals сегмента с релевантностью и свежестью для конкретной компании."""
+    def score(self, seg: ClusterSummary, company: CompanyContext, now: Optional[datetime] = None,
+              paths: Optional[list[ExposurePath]] = None) -> Confidence:
+        """S5. Складывает ContentSignals кластера с персональной чувствительностью (пути влияния) и свежестью."""
 
 
 @runtime_checkable
-class SegmentCache(Protocol):
-    def get(self, key: ContentKey) -> Optional[SegmentSummary]: ...
-    def put(self, item: SegmentSummary, ttl_s: int) -> None: ...
+class SummaryCache(Protocol):
+    def get(self, key: ContentKey) -> Optional[ClusterSummary]: ...
+    def put(self, item: ClusterSummary, ttl_s: int) -> None: ...
     def invalidate_cluster(self, cluster_id: str) -> int:
-        """Удаляет сегментные саммари кластера (для всех сегментов и версий промпта). Возвращает их число."""
-
-
-@runtime_checkable
-class CompanyDirectory(Protocol):
-    """Источник активных компаний для разворота сегментного саммари на баннеры."""
-    def active_in_segment(self, segment_id: str) -> list[CompanyContext]: ...
-    def get(self, company_id: str) -> Optional[CompanyContext]: ...
-
-
-@runtime_checkable
-class BannerComposer(Protocol):
-    def compose(self, seg: SegmentSummary, company: CompanyContext, confidence: Confidence) -> Banner:
-        """S4+S7. Подставляет признак компании в шаблон, ставит срок жизни по теме."""
+        """Удаляет саммари кластера (для всех версий промпта). Возвращает их число."""
 
 
 @runtime_checkable
@@ -71,27 +58,36 @@ class BannerStore(Protocol):
         """Идемпотентно по banner_id. True, если баннер новый для компании и не скрыт ею (его можно пушить)."""
     def get(self, company_id: str, banner_id: str, now: Optional[datetime] = None) -> Optional[BannerDTO]:
         """Готовая выдача, если баннер есть, не просрочен и не скрыт компанией. Иначе None."""
+    def is_hidden(self, company_id: str, banner_id: str) -> bool:
+        """Компания убрала баннер («не про меня» или «скрыть»): генерировать его заново не нужно."""
     def top_k(self, company_id: str, k: int, now: Optional[datetime] = None) -> list[BannerDTO]: ...
+    def counts(self, company_id: str, now: Optional[datetime] = None) -> dict[str, int]:
+        """Число актуальных баннеров по severity и скрытых (`hidden`): для индикаторов панели, а не только top-k."""
     def mark_seen(self, company_id: str, banner_id: str) -> None: ...
-    def suppress(self, company_id: str, banner_id: str, reason: str) -> None: ...
+    def suppress(self, company_id: str, banner_id: str, reason: str) -> None:
+        """«Не про меня»: негативная обратная связь, баннер больше не показывается."""
+    def hide(self, company_id: str, banner_id: str) -> None:
+        """«Скрыть»: убрать из выдачи без негативной обратной связи; попадает в счётчик `hidden`."""
     def invalidate_cluster(self, cluster_id: str, reason: str) -> int: ...
 
 
 @runtime_checkable
 class Publisher(Protocol):
-    def to_dto(self, banner: Banner, seg: SegmentSummary) -> BannerDTO: ...
+    def to_dto(self, banner: Banner, seg: ClusterSummary) -> BannerDTO: ...
     def push(self, company_id: str, banners: list[BannerDTO]) -> None:
-        """SSE для открытой сессии, если баннер срочный."""
+        """Новый баннер компании уходит подписчику (SSE открытой сессии)."""
 
 
 @runtime_checkable
 class SummaryBranch(Protocol):
     """Публичный вход ветки для оркестратора."""
-    def handle(self, req: SummaryRequest) -> list[BannerDTO] | ChatAnswer:
-        """Единственный вызов оркестратора: по `req.mode` отдаёт готовые баннеры компании или ответ чата.
+    def banner(self, req: SummaryRequest) -> Optional[BannerDTO]:
+        """Баннер компании по одному кластеру: готовый из хранилища или собранный сейчас и сохранённый.
 
-        Проверка качества и повтор генерации внутри ветки; оркестратор результат не оценивает.
+        None — новость компании не показываем (низкая связь, скрыта компанией или модель не смогла разобрать кластер).
         """
-    def handle_banner(self, req: SummaryRequest) -> list[Banner]:
-        """Предрасчёт: по одному баннеру на кластер из батча (после порога уверенности) для каждой компании сегмента."""
+    def serve_banners(self, req: SummaryRequest) -> list[BannerDTO]:
+        """Баннеры по нескольким кластерам запроса, кластеры параллельно."""
     def handle_chat(self, req: SummaryRequest) -> ChatAnswer: ...
+    def handle(self, req: SummaryRequest) -> list[BannerDTO] | ChatAnswer:
+        """По `req.mode`: баннеры компании или ответ чата. Проверка качества и повтор генерации внутри ветки."""

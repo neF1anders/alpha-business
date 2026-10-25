@@ -108,13 +108,13 @@ class DefaultEvidenceBinder:
         for ref_id in used_ids:
             if ref_id in news_by_id:
                 news = news_by_id[ref_id]
-                add(SourceRef(kind=news.source_kind, title=news.title, url=news.url))
+                add(SourceRef(kind=news.source_kind, title=news.title, url=news.url, ref_id=ref_id))
                 if news.primary_url:
-                    add(SourceRef(kind=SourceKind.PRIMARY, title=news.title, url=news.primary_url))
+                    add(SourceRef(kind=SourceKind.PRIMARY, title=news.title, url=news.primary_url, ref_id=ref_id))
             else:
                 doc = docs_by_id[ref_id]
                 title = f"{doc.title}, стр. {doc.page}" if doc.page else doc.title
-                add(SourceRef(kind=SourceKind.BANK, title=title, url=doc.url))
+                add(SourceRef(kind=SourceKind.BANK, title=title, url=doc.url, ref_id=ref_id))
 
         ordered = sorted(sources.values(), key=lambda s: _SOURCE_ORDER[s.kind])
         return ordered[: self._config.max_sources]

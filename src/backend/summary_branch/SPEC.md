@@ -18,7 +18,7 @@
 
 ## 2. Два хранилища: это не одно и то же
 
-| | `SegmentCache` | `BannerStore` |
+| | `SummaryCache` | `BannerStore` |
 |---|---|---|
 | Что хранит | Общее содержимое: заголовок, шаблон «для вас», утверждения, источники, сигналы качества | Личный индекс: баннер компании (строка «для вас», уверенность, срок) + готовый `BannerDTO` |
 | Ключ | `(cluster_id, segment_id, prompt_version)` | `company_id` -> отсортированный набор баннеров |
@@ -61,34 +61,34 @@
 - Источники: для каждой использованной новости `SourceRef(kind=news.source_kind, title=news.title, url=news.url)`; если задан `primary_url`, добавляется `PRIMARY`-источник; для использованных материалов банка добавляется `BANK`. Порядок: primary, bank, media. Не более трёх.
 
 ### 3.4 `stores.py`
-- `InMemorySegmentCache(SegmentCache)` с TTL, счётчиком попаданий и `invalidate_cluster` (сброс саммари кластера по всем сегментам).
+- `InMemorySummaryCache(SummaryCache)` с TTL, счётчиком попаданий и `invalidate_cluster` (сброс саммари кластера по всем сегментам).
 - `InMemoryBannerStore(BannerStore)`: `put` идемпотентен по `banner_id` и возвращает `True`, если баннер новый, иначе `False`; `top_k` отбрасывает просроченные и скрытые, применяет `pick_top_k` (динамическая часть приоритета и разнообразие тем), возвращает `list[BannerDTO]`; `mark_seen`, `suppress`, `invalidate_cluster` работают как описано в интерфейсе.
 - `SqliteBannerStore` (`sqlite_store.py`): тот же контракт `BannerStore` в локальном файле SQLite (стандартная библиотека), включая «показан» и «скрыт»; контрактные тесты в `test_stores.py` идут на обеих реализациях. Включается `BranchConfig.banner_store_path`.
 - Интерфейс сохраняется таким, чтобы позже подставить Redis (отсортированное множество со статическим `base_priority` из `scoring.py`) или Postgres. Они не нужны, пока достаточно одного процесса.
 
 ### 3.5 `confidence.py` — `DefaultConfidenceScorer(ConfidenceScorer)`
-Тонкий адаптер над `scoring.company_confidence` (берёт сигналы, `lead`, `topic`, `severity` из `SegmentSummary`; `has_sources` по `seg.sources`). Релевантность по профилю: см. dataflow раздел 5; для чата передаётся `requested_by_user=True`. Калибратор принимает необязательным параметром конструктора; NLI принимает `DefaultContentScorer` (адаптер над `content_signals`).
+Тонкий адаптер над `scoring.company_confidence` (берёт сигналы, `lead`, `topic`, `severity` из `ClusterSummary`; `has_sources` по `seg.sources`). Релевантность по профилю: см. dataflow раздел 5; для чата передаётся `requested_by_user=True`. Калибратор принимает необязательным параметром конструктора; NLI принимает `DefaultContentScorer` (адаптер над `content_signals`).
 
 ### 3.6 `composer.py` — `DefaultBannerComposer(BannerComposer)`
 - `for_you` через `scoring.render_for_you` (не клиенту строка не говорит о продуктах банка).
 - `banner_id` детерминированный: хеш от `company_id` и `key`, чтобы повторный прогон не плодил дубликаты.
-- `expires_at` по теме из конфига. `topic`, `severity` копируются из `SegmentSummary`.
+- `expires_at` по теме из конфига. `topic`, `severity` копируются из `ClusterSummary`.
 
 ### 3.7 `publisher.py` — `DefaultPublisher(Publisher)`
 - `to_dto`: `label` из пары «severity + topic» (например, «Внимание · rate»; словарь русских названий тем вынести в конфиг), `caveat = decision == SHOW_WITH_CAVEAT`, `raw_news = decision == SHOW_RAW_NEWS`. При `raw_news` `headline` берётся из заголовка главной новости (первый источник), `for_you` пустое, интерпретаций нет.
 - `push`: вызывает переданный обработчик (заглушка `Callable`), реального SSE не нужно.
 
-### 3.8 `segment_builder.py` — `SegmentBuilder`
-Склеивает S1–S3b: ключ `ContentKey` -> `SegmentCache.get` -> при промахе `ValidatedGenerator` (саммаризатор, binder, сигналы, повтор при невалидном) -> `SegmentSummary` -> `SegmentCache.put`. Возвращает `None`, если после сборки не осталось ни одного `fact`/`bank` утверждения или `structure_ok` ложно.
+### 3.8 `cluster_summary.py` — `ClusterSummaryBuilder`
+Склеивает S1–S3b: ключ `ContentKey` -> `SummaryCache.get` -> при промахе `ValidatedGenerator` (саммаризатор, binder, сигналы, повтор при невалидном) -> `ClusterSummary` -> `SummaryCache.put`. Возвращает `None`, если после сборки не осталось ни одного `fact`/`bank` утверждения или `structure_ok` ложно.
 
 ### 3.8а `generator.py` — `ValidatedGenerator`
-Один проход S2–S3b с проверкой. `is_valid(signals)`: `structure_ok`, нет `numeric_miss`, `grounding >= config.min_grounding`. `generate(req)` повторяет генерацию до `config.max_generation_attempts` раз при бюджете `FULL` (при `LITE` и `CACHED_ONLY` одна попытка), возвращает первую валидную попытку, иначе лучшую по (`structure_ok`, нет `numeric_miss`, `grounding`). `SummarizationFailed` и `BudgetExhausted` первой попытки пробрасываются; сбой повтора после успешной попытки логируется, берётся лучшая из имеющихся. Им пользуются `SegmentBuilder` и `handle_chat`.
+Один проход S2–S3b с проверкой. `is_valid(signals)`: `structure_ok`, нет `numeric_miss`, `grounding >= config.min_grounding`. `generate(req)` повторяет генерацию до `config.max_generation_attempts` раз при бюджете `FULL` (при `LITE` и `CACHED_ONLY` одна попытка), возвращает первую валидную попытку, иначе лучшую по (`structure_ok`, нет `numeric_miss`, `grounding`). `SummarizationFailed` и `BudgetExhausted` первой попытки пробрасываются; сбой повтора после успешной попытки логируется, берётся лучшая из имеющихся. Им пользуются `ClusterSummaryBuilder` и `handle_chat`.
 
 ### 3.9 `branch.py` — `DefaultSummaryBranch(SummaryBranch)`
 `handle(req)`: единственный вызов оркестратора. `mode=chat` -> `handle_chat`; `mode=banner` -> `serve_banners`: для топ-кластеров запроса искать `store.get(company_id, banner_id)` (id детерминирован), готовые отдавать сразу, по недостающим вызвать `handle_banner` и прочитать результат из хранилища. Возвращает `list[BannerDTO]` для `req.company`; скрытые компанией и просроченные не возвращаются. Решение «валиден ли результат» целиком на стороне ветки, оркестратор его не принимает.
 `handle_banner(req)`:
 1. Сгруппировать `req.news` по `cluster_id`, взять первые `max_clusters_per_request` по лучшему `rerank_score`.
-2. Для каждого кластера собрать `SegmentSummary` через `SegmentBuilder` (запрос с новостями только этого кластера).
+2. Для каждого кластера собрать `ClusterSummary` через `ClusterSummaryBuilder` (запрос с новостями только этого кластера).
 3. Взять компании: `req.company` плюс `directory.active_in_segment(segment_id)` без дублей.
 4. Для каждой компании: `ConfidenceScorer.score`; при `DROP` пропустить; иначе `composer.compose`, `publisher.to_dto`, `store.put`; если `severity=ATTENTION`, решение `SHOW_SUMMARY`, `score >= urgent_min_score` и `store.put` вернул `True`, вызвать `publisher.push`.
 5. Вернуть список созданных `Banner`.

@@ -53,8 +53,13 @@ evidence_ids опору, а без опоры вывод не пиши.
 watch — фон, который стоит держать в поле зрения."""
 
 _MODE_RULES = {
-    Mode.BANNER: ("Режим banner: текст общий для всех компаний сегмента, не упоминай конкретную компанию. "
-                  "follow_ups — пустой список."),
+    Mode.BANNER: ("Режим banner: текст общий для всех компаний, не упоминай конкретную компанию. "
+                  "follow_ups — пустой список. Заполни карту влияния: impacts — отрасли, на которые новость действует "
+                  "прямо или через цепочку поставок и спрос (до 6), division — двузначный раздел ОКВЭД («24», «46»), "
+                  "direction — negative | positive | mixed, mechanism — до 160 символов, через что именно новость "
+                  "действует на отрасль, только по тексту новости, evidence_ids — news_id опоры. countries — страны "
+                  "из новости заглавными буквами («КИТАЙ», «ТУРЦИЯ»), regions — регионы России из новости. "
+                  "Если новость общая и отраслей не называет, impacts — пустой список."),
     Mode.CHAT: ("Режим chat: ответь на вопрос из блока QUESTION, опираясь только на источники. "
                 "Не более трёх утверждений, каждое до 25 слов. Последнее утверждение типа model — вывод именно для "
                 "этой компании: назови её признак из блока COMPANY features дословно, без новых чисел и фактов. "
@@ -75,7 +80,7 @@ def _attr(text: str) -> str:
 
 def _news_block(news: RankedNewsItem, max_chars: int) -> str:
     return (f'<<<NEWS id="{_attr(news.news_id)}" kind="{news.source_kind.value}" '
-            f'published="{news.published_at.isoformat()}">>>\n'
+            f'published="{news.published_at.isoformat()}" tags="{_attr(",".join(news.tags))}">>>\n'
             f"title: {_attr(news.title)}\n"
             f"text: {_defang(news.text[:max_chars])}\n"
             f"<<<END_NEWS>>>")
