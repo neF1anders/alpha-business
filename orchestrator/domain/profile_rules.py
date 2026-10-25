@@ -30,11 +30,11 @@ def _values(tags: Iterable[str], namespace: str) -> list[str]:
 
 
 def segment_of(tags: Iterable[str]) -> str:
-    """Сегмент = отрасль × размер, например `trade|mid`. Размер неизвестен -> `unknown`."""
+    """Сегмент = отрасль × размер, например `trade-mid`. Размер неизвестен -> `unknown`."""
     tags = list(tags)
     sector = next(iter(_values(tags, "sector")), UNKNOWN)
     size = next((s for s in _values(tags, "size") if s in SIZES), UNKNOWN)
-    return f"{sector}|{size}"
+    return f"{sector}-{size}"
 
 
 def features_of(tags: Iterable[str]) -> tuple[str, ...]:
