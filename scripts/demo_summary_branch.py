@@ -8,7 +8,6 @@ import sys
 from datetime import timedelta
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from summary_branch.bootstrap import build_branch  # noqa: E402
 from summary_branch.fakes import FakeLLMClient, StaticDirectory  # noqa: E402

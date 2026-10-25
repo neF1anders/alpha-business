@@ -22,7 +22,7 @@ RECIPE=dict(model=MODEL,revision=REVISION,dimension=384,pooling='attention_mask_
             normalization='l2',query_prefix='query: ',passage_prefix='passage: ',
             max_tokens=512,title_token_cap=64,overlap_tokens=48,version=1)
 SPACE_ID=hashlib.sha256(json.dumps(RECIPE,sort_keys=True).encode()).hexdigest()
-SCHEMA=Path(__file__).resolve().parent.parent/'sql/embeddings.sql'
+SCHEMA=Path(__file__).resolve().parents[3]/'sql/embeddings.sql'
 
 
 def source_hash(title,text):

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "eval"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "eval"))
 
 from budget import BudgetGuard, BudgetStop, allowed_calls, parse_key_info  # noqa: E402
 from stats import percentile, wilson  # noqa: E402

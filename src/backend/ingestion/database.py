@@ -12,7 +12,7 @@ from .common import sha256
 from .csv_data import SOURCES
 from .taxonomy import FACTORS, SECTORS
 
-SCHEMA = Path(__file__).resolve().parent.parent / 'sql' / 'schema.sql'
+SCHEMA = Path(__file__).resolve().parents[3] / 'sql' / 'schema.sql'
 
 
 def connect():
