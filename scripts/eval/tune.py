@@ -13,7 +13,7 @@ from dataset import load_news, read_jsonl
 from relabel import section_personalization
 from stats import percentile, rate
 from summary_branch.config import BranchConfig
-from summary_branch.scoring import HALF_LIFE_H
+from summary_branch.domain.scoring import HALF_LIFE_H
 
 RESULTS = Path(__file__).resolve().parents[2] / "eval" / "results"
 SLO_S = 4.0

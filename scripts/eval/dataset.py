@@ -8,7 +8,7 @@ from datetime import timedelta
 from pathlib import Path
 
 
-from summary_branch.models import (  # noqa: E402
+from summary_branch.domain.models import (  # noqa: E402
     BankMaterialRef, CompanyContext, RankedNewsItem, SourceKind, utcnow,
 )
 
@@ -73,7 +73,7 @@ def load_companies() -> list[CompanyRow]:
 
 def _profile_problems(news_ids: set[str]) -> list[str]:
     """Профили компаний и переразмеченные пары (если файлы есть): схема, полнота сетки, допустимые метки."""
-    from summary_branch.models import CompanyProfile
+    from summary_branch.domain.models import CompanyProfile
     found: list[str] = []
     try:
         profiles = read_jsonl("profiles.jsonl")

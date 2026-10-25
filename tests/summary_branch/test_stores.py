@@ -1,12 +1,12 @@
 from datetime import timedelta
 
-from summary_branch.models import (
+from summary_branch.domain.models import (
     Banner, BannerDTO, ContentKey, Decision, Severity, utcnow,
 )
 import pytest
 
-from summary_branch.sqlite_store import SqliteBannerStore
-from summary_branch.stores import InMemoryBannerStore, InMemorySegmentCache
+from summary_branch.infrastructure.sqlite_store import SqliteBannerStore
+from summary_branch.infrastructure.stores import InMemoryBannerStore, InMemorySegmentCache
 
 
 @pytest.fixture(params=["memory", "sqlite"])
@@ -127,7 +127,7 @@ def test_segment_cache_ttl_and_hit_counter():
 
 
 def _summary(k):
-    from summary_branch.models import ContentSignals, LeadRef, SegmentSummary
+    from summary_branch.domain.models import ContentSignals, LeadRef, SegmentSummary
     signals = ContentSignals(grounding=1, source_quality=1, claim_mix=1, faithfulness=1, coverage=1,
                              specificity=1, brevity=1, structure_ok=True, sqs=1)
     lead = LeadRef(cluster_id=k.cluster_id, published_at=utcnow(), rerank_score=0.5)

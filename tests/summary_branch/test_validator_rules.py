@@ -1,10 +1,10 @@
 """Правила валидатора: любое число должно быть в источнике, у утверждения должны быть слова источника."""
 from factories import make_company, make_draft, make_news, make_req, make_segment
-from summary_branch import scoring
-from summary_branch.confidence import DefaultConfidenceScorer
+from summary_branch.domain import scoring
+from summary_branch.application.confidence import DefaultConfidenceScorer
 from summary_branch.config import BranchConfig
-from summary_branch.generator import ValidatedGenerator
-from summary_branch.models import ClaimType, Decision, DraftClaim
+from summary_branch.application.generator import ValidatedGenerator
+from summary_branch.domain.models import ClaimType, Decision, DraftClaim
 
 
 def decide(claim_text, news_text=None, **news_kw):

@@ -4,10 +4,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Callable, Optional
 
-from .models import (
+from ..domain.models import (
     Claim, CompanyContext, Confidence, ContentSignals, SegmentSummary, SourceRef, SummaryDraft, SummaryRequest,
 )
-from .scoring import company_confidence, content_signals
+from ..domain.scoring import company_confidence, content_signals
 
 
 class DefaultContentScorer:

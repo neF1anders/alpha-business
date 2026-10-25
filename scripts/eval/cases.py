@@ -9,10 +9,10 @@ from typing import Callable, Optional
 
 from dataset import CompanyRow, NewsRow, load_bank, load_bank_topics, load_companies, load_news
 from summary_branch.config import BranchConfig
-from summary_branch.fakes import FakeLLMClient
-from summary_branch.models import BankMaterialRef, Mode, SummaryRequest
-from summary_branch.scoring import tag_overlap
-from summary_branch.summarizer import build_prompt
+from summary_branch.infrastructure.fakes import FakeLLMClient
+from summary_branch.domain.models import BankMaterialRef, Mode, SummaryRequest
+from summary_branch.domain.scoring import tag_overlap
+from summary_branch.application.summarizer import build_prompt
 
 _NUM = re.compile(r"\d+(?:[.,]\d+)?")
 _ANTONYMS = (("сохранил", "повысил"), ("повысил", "снизил"), ("снизил", "повысил"), ("вырос", "снизился"),

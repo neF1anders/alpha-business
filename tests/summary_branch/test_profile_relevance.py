@@ -2,9 +2,9 @@
 from datetime import timedelta
 
 from factories import make_company, make_news, make_profile, make_req, make_segment
-from summary_branch.models import Decision, PaymentProfile, Severity, utcnow
-from summary_branch.personalization import enrich
-from summary_branch.scoring import company_confidence, lead_from_news, render_for_you
+from summary_branch.domain.models import Decision, PaymentProfile, Severity, utcnow
+from summary_branch.domain.personalization import enrich
+from summary_branch.domain.scoring import company_confidence, lead_from_news, render_for_you
 
 
 def confidence(profile, topic="fx", tags=("fx",), severity=None, requested=False, **news_kw):
@@ -75,7 +75,7 @@ def test_for_you_never_speaks_about_bank_products_to_non_clients():
 
 def test_prompt_with_profile_has_derived_facts_but_no_ids_groups_or_counterparties():
     from summary_branch.config import BranchConfig
-    from summary_branch.summarizer import build_prompt
+    from summary_branch.application.summarizer import build_prompt
     profile = make_profile(foreign_trade=True, group_id="group_42_sb", revenue=123456789.0,
                            payments=PaymentProfile(counterparty_sectors={"46": 0.6}))
     company = make_company("secret-company-42", segment_id="secret-segment", tags=[], features=[], profile=profile)

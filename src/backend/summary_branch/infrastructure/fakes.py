@@ -6,8 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from .models import CompanyContext
-from .summarizer import BANK_BLOCK_RE, DATA_BEGIN, NEWS_BLOCK_RE, QUESTION_BLOCK_RE
+from ..domain.models import CompanyContext
+from ..application.summarizer import BANK_BLOCK_RE, DATA_BEGIN, NEWS_BLOCK_RE, QUESTION_BLOCK_RE
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 _TOPIC_KEYWORDS = (

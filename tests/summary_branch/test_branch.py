@@ -3,11 +3,11 @@ import logging
 
 import pytest
 from factories import make_company, make_news, make_req
-from summary_branch import interfaces as ifc
+from summary_branch.domain import ports as ifc
 from summary_branch.bootstrap import build_branch
 from summary_branch.config import BranchConfig
-from summary_branch.fakes import FakeLLMClient, StaticDirectory
-from summary_branch.models import BudgetTier, Decision, Mode
+from summary_branch.infrastructure.fakes import FakeLLMClient, StaticDirectory
+from summary_branch.domain.models import BudgetTier, Decision, Mode
 
 SEGMENT = "metal-large-north"
 COMPANIES = [make_company("co1"), make_company("co2", features=["экспорт в ЕАЭС"]),
@@ -126,7 +126,7 @@ def test_urgent_banner_is_pushed_only_for_attention_with_high_score():
 
 
 def test_top_banners_respects_top_k_serve_and_injected_store():
-    from summary_branch.stores import InMemoryBannerStore, InMemorySegmentCache
+    from summary_branch.infrastructure.stores import InMemoryBannerStore, InMemorySegmentCache
     store, cache = InMemoryBannerStore(), InMemorySegmentCache()
     news = [make_news(f"n{i}", f"c{i}", rerank_score=0.9) for i in range(3)]
     rt = build_branch(FakeLLMClient(), StaticDirectory(COMPANIES), BranchConfig(top_k_serve=2, max_clusters_per_request=3),

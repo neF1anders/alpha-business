@@ -1,7 +1,7 @@
 """Профиль компании: нормализация, чувствительность к темам, сегмент, признаки «для вас»."""
 from factories import make_company, make_profile
-from summary_branch.models import PaymentProfile
-from summary_branch.personalization import (
+from summary_branch.domain.models import PaymentProfile
+from summary_branch.domain.personalization import (
     derive_features, derive_tags, enrich, indirect_exposure, news_sectors, segment_signature, topic_exposure,
 )
 

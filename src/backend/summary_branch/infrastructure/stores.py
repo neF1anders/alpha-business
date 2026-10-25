@@ -10,8 +10,8 @@ import threading
 from datetime import datetime, timedelta
 from typing import Callable, Optional
 
-from .models import Banner, BannerDTO, ContentKey, SegmentSummary, utcnow
-from .scoring import pick_top_k
+from ..domain.models import Banner, BannerDTO, ContentKey, SegmentSummary, utcnow
+from ..domain.scoring import pick_top_k
 
 log = logging.getLogger(__name__)
 

@@ -2,8 +2,8 @@ from datetime import timedelta
 
 import pytest
 
-from summary_branch.models import *
-from summary_branch.scoring import (
+from summary_branch.domain.models import *
+from summary_branch.domain.scoring import (
     company_confidence, content_signals, lead_from_news, pick_top_k, render_for_you,
 )
 

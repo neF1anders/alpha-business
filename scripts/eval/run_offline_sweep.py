@@ -11,10 +11,10 @@ from pathlib import Path
 
 from cases import DraftCase, build_cases
 from stats import rate
-from summary_branch import scoring
-from summary_branch.binder import DefaultEvidenceBinder
-from summary_branch.models import Decision, SummaryDraft
-from summary_branch.scoring import company_confidence, content_signals, lead_from_news
+from summary_branch.domain import scoring
+from summary_branch.application.binder import DefaultEvidenceBinder
+from summary_branch.domain.models import Decision, SummaryDraft
+from summary_branch.domain.scoring import company_confidence, content_signals, lead_from_news
 
 RESULTS = Path(__file__).resolve().parents[2] / "eval" / "results" / "offline.json"
 RERANK = 0.9   # допущение: реранкер уверен в новости; релевантность здесь не исследуется

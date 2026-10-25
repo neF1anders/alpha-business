@@ -6,10 +6,10 @@ import logging
 import re
 import time
 
-from .config import BranchConfig
-from .errors import BudgetExhausted, SummarizationFailed
-from .interfaces import LLMClient
-from .models import BankMaterialRef, BudgetTier, CompanyContext, Mode, RankedNewsItem, SummaryDraft, SummaryRequest
+from ..config import BranchConfig
+from ..domain.errors import BudgetExhausted, SummarizationFailed
+from ..domain.ports import LLMClient
+from ..domain.models import BankMaterialRef, BudgetTier, CompanyContext, Mode, RankedNewsItem, SummaryDraft, SummaryRequest
 
 log = logging.getLogger(__name__)
 

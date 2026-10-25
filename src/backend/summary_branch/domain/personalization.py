@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from .models import CompanyContext, CompanyProfile, Product, Relationship
+from ..domain.models import CompanyContext, CompanyProfile, Product, Relationship
 
 TOPICS = ("rate", "fx", "labor", "demand")
 SENSITIVE = 0.5                  # с этого значения компания считается чувствительной к теме

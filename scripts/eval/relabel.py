@@ -12,9 +12,9 @@ from typing import Optional
 from dataset import load_companies, read_jsonl
 from run_personalization import news_signals
 from stats import wilson
-from summary_branch import scoring
-from summary_branch.models import CompanyContext, CompanyProfile, Decision
-from summary_branch.personalization import enrich
+from summary_branch.domain import scoring
+from summary_branch.domain.models import CompanyContext, CompanyProfile, Decision
+from summary_branch.domain.personalization import enrich
 
 SHOWN = (Decision.SHOW_SUMMARY, Decision.SHOW_WITH_CAVEAT)
 FLOORS = (0.15, 0.25, 0.35, 0.5, 0.7)

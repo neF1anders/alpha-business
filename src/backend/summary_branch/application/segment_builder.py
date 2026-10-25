@@ -4,11 +4,11 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from .config import BranchConfig
-from .generator import ValidatedGenerator
-from .interfaces import SegmentCache
-from .models import ClaimType, ContentKey, SegmentSummary, SummaryRequest
-from .scoring import lead_from_news
+from ..config import BranchConfig
+from ..application.generator import ValidatedGenerator
+from ..domain.ports import SegmentCache
+from ..domain.models import ClaimType, ContentKey, SegmentSummary, SummaryRequest
+from ..domain.scoring import lead_from_news
 
 log = logging.getLogger(__name__)
 

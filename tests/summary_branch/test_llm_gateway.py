@@ -2,7 +2,7 @@
 import json
 
 import pytest
-from summary_branch.llm_gateway import (
+from summary_branch.infrastructure.llm_gateway import (
     DEFAULT_ROUTES, FALLBACK_BASE_URL, PRIMARY_BASE_URL, GatewaySettings, LLMGatewayError,
     OpenAICompatibleLLMClient, parse_json_object,
 )
@@ -158,8 +158,8 @@ def test_settings_without_key_raise(tmp_path):
 
 def test_gateway_errors_map_to_summarization_failed_in_summarizer():
     from factories import make_req
-    from summary_branch.errors import SummarizationFailed
-    from summary_branch.summarizer import LlmSummarizer
+    from summary_branch.domain.errors import SummarizationFailed
+    from summary_branch.application.summarizer import LlmSummarizer
     c, _ = client(*[TimeoutError()] * 12)
     with pytest.raises(SummarizationFailed):
         LlmSummarizer(c).summarize(make_req())

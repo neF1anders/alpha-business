@@ -6,20 +6,20 @@ import uuid
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 
-from .composer import make_banner_id
-from .config import BranchConfig
-from .errors import BudgetExhausted, SummarizationFailed
-from .generator import ValidatedGenerator
-from .interfaces import (
+from ..application.composer import make_banner_id
+from ..config import BranchConfig
+from ..domain.errors import BudgetExhausted, SummarizationFailed
+from ..application.generator import ValidatedGenerator
+from ..domain.ports import (
     BannerComposer, BannerStore, CompanyDirectory, ConfidenceScorer, Publisher,
 )
-from .personalization import enrich
-from .models import (
+from ..domain.personalization import enrich
+from ..domain.models import (
     Banner, BannerDTO, ChatAnswer, CompanyContext, ContentKey, Decision, Mode, RankedNewsItem, SegmentSummary,
     Severity, SourceRef, SummaryRequest,
 )
-from .scoring import company_confidence, lead_from_news
-from .segment_builder import SegmentBuilder
+from ..domain.scoring import company_confidence, lead_from_news
+from ..application.segment_builder import SegmentBuilder
 
 log = logging.getLogger(__name__)
 

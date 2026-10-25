@@ -5,9 +5,9 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import Callable
 
-from .config import BranchConfig
-from .models import Banner, CompanyContext, Confidence, ContentKey, Decision, SegmentSummary, utcnow
-from .scoring import render_for_you
+from ..config import BranchConfig
+from ..domain.models import Banner, CompanyContext, Confidence, ContentKey, Decision, SegmentSummary, utcnow
+from ..domain.scoring import render_for_you
 
 
 def make_banner_id(company_id: str, key: ContentKey) -> str:

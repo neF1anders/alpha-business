@@ -10,9 +10,9 @@ from pathlib import Path
 
 
 from summary_branch.bootstrap import build_branch  # noqa: E402
-from summary_branch.fakes import FakeLLMClient, StaticDirectory  # noqa: E402
-from summary_branch.llm_gateway import OpenAICompatibleLLMClient  # noqa: E402
-from summary_branch.models import (  # noqa: E402
+from summary_branch.infrastructure.fakes import FakeLLMClient, StaticDirectory  # noqa: E402
+from summary_branch.infrastructure.llm_gateway import OpenAICompatibleLLMClient  # noqa: E402
+from summary_branch.domain.models import (  # noqa: E402
     BankMaterialRef, CompanyContext, Mode, RankedNewsItem, SourceKind, SummaryRequest, utcnow,
 )
 

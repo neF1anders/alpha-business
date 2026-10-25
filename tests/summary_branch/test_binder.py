@@ -1,7 +1,7 @@
 from factories import make_bank_material, make_news, make_req
-from summary_branch.binder import DefaultEvidenceBinder
+from summary_branch.application.binder import DefaultEvidenceBinder
 from summary_branch.config import BranchConfig
-from summary_branch.models import ClaimType, DraftClaim, SourceKind, SummaryDraft
+from summary_branch.domain.models import ClaimType, DraftClaim, SourceKind, SummaryDraft
 
 
 def make_draft(*claims: DraftClaim) -> SummaryDraft:

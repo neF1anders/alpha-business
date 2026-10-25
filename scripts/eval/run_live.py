@@ -16,10 +16,10 @@ from budget import BudgetGuard, BudgetStop, allowed_calls
 from cases import banks_for, best_company
 from dataset import DATA_DIR, load_bank, load_bank_topics, load_companies, load_news, read_jsonl
 from summary_branch.bootstrap import build_branch
-from summary_branch.fakes import StaticDirectory
-from summary_branch.llm_gateway import GatewaySettings, OpenAICompatibleLLMClient
-from summary_branch.models import ContentKey, Mode, SummaryRequest
-from summary_branch.scoring import _evidence_text, _numbers, _stems
+from summary_branch.infrastructure.fakes import StaticDirectory
+from summary_branch.infrastructure.llm_gateway import GatewaySettings, OpenAICompatibleLLMClient
+from summary_branch.domain.models import ContentKey, Mode, SummaryRequest
+from summary_branch.domain.scoring import _evidence_text, _numbers, _stems
 
 RESULTS = Path(__file__).resolve().parents[2] / "eval" / "results"
 CEILING_RUB = 100.0

@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional, Protocol, runtime_checkable
 
-from .models import (
+from ..domain.models import (
     Banner, BannerDTO, ChatAnswer, Claim, CompanyContext, Confidence, ContentKey,
     ContentSignals, SegmentSummary, SourceRef, SummaryDraft, SummaryRequest,
 )

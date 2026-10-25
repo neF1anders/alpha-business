@@ -4,11 +4,11 @@ from __future__ import annotations
 import logging
 import re
 
-from .config import BranchConfig
-from .models import (
+from ..config import BranchConfig
+from ..domain.models import (
     Claim, ClaimType, EvidenceRef, SourceKind, SourceRef, SummaryDraft, SummaryRequest,
 )
-from .scoring import _NUM, _numbers, _stems
+from ..domain.scoring import _NUM, _numbers, _stems
 
 log = logging.getLogger(__name__)
 

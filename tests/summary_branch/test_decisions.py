@@ -1,10 +1,10 @@
 """Критерии 5 и 6: числа, уровни уверенности и вид баннера."""
 import pytest
 from factories import make_company, make_draft, make_news, make_req, make_segment
-from summary_branch.composer import DefaultBannerComposer, make_banner_id
-from summary_branch.confidence import DefaultConfidenceScorer
-from summary_branch.models import ClaimType, Decision, DraftClaim
-from summary_branch.publisher import DefaultPublisher
+from summary_branch.application.composer import DefaultBannerComposer, make_banner_id
+from summary_branch.application.confidence import DefaultConfidenceScorer
+from summary_branch.domain.models import ClaimType, Decision, DraftClaim
+from summary_branch.application.publisher import DefaultPublisher
 
 scorer = DefaultConfidenceScorer()
 composer = DefaultBannerComposer()

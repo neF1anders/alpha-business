@@ -1,7 +1,7 @@
 """Общие фабрики тестовых данных."""
 from datetime import timedelta
 
-from summary_branch.models import (
+from summary_branch.domain.models import (
     BankMaterialRef, CompanyContext, CompanyProfile, Mode, RankedNewsItem, SourceKind, SummaryRequest, utcnow,
 )
 
@@ -47,7 +47,7 @@ def make_req(**kw) -> SummaryRequest:
 
 
 def make_draft(claims=None, **kw):
-    from summary_branch.models import ClaimType, DraftClaim, SummaryDraft
+    from summary_branch.domain.models import ClaimType, DraftClaim, SummaryDraft
     base = dict(headline="Ставка остаётся 14%", for_you_template="У вас {feature}: нагрузка не снизится",
                 for_you_fallback="Нагрузка по кредитам не снизится", topic="rate", severity="attention",
                 claims=claims if claims is not None else [
@@ -61,10 +61,10 @@ def make_draft(claims=None, **kw):
 
 def make_segment(req, draft=None):
     """Сегментное саммари как его собрал бы SegmentBuilder (без кэша и LLM)."""
-    from summary_branch.binder import DefaultEvidenceBinder
-    from summary_branch.confidence import DefaultContentScorer
-    from summary_branch.models import ContentKey, SegmentSummary
-    from summary_branch.scoring import lead_from_news
+    from summary_branch.application.binder import DefaultEvidenceBinder
+    from summary_branch.application.confidence import DefaultContentScorer
+    from summary_branch.domain.models import ContentKey, SegmentSummary
+    from summary_branch.domain.scoring import lead_from_news
     draft = draft or make_draft()
     claims, sources = DefaultEvidenceBinder().bind(draft, req)
     signals = DefaultContentScorer().score(req, draft, claims, sources)

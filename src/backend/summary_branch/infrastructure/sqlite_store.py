@@ -12,8 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .models import Banner, BannerDTO, utcnow
-from .scoring import pick_top_k
+from ..domain.models import Banner, BannerDTO, utcnow
+from ..domain.scoring import pick_top_k
 
 log = logging.getLogger(__name__)
 

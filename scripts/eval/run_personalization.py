@@ -15,13 +15,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from cases import honest_draft  # noqa: E402
 from dataset import load_bank, load_bank_topics, load_news  # noqa: E402
-from summary_branch import scoring  # noqa: E402
-from summary_branch.binder import DefaultEvidenceBinder  # noqa: E402
-from summary_branch.confidence import DefaultContentScorer  # noqa: E402
-from summary_branch.models import (  # noqa: E402
+from summary_branch.domain import scoring  # noqa: E402
+from summary_branch.application.binder import DefaultEvidenceBinder  # noqa: E402
+from summary_branch.application.confidence import DefaultContentScorer  # noqa: E402
+from summary_branch.domain.models import (  # noqa: E402
     CompanyContext, CompanyProfile, Decision, FlowRole, PaymentProfile, Product, SummaryRequest, Mode,
 )
-from summary_branch.personalization import enrich, segment_signature, topic_exposure, TOPICS  # noqa: E402
+from summary_branch.domain.personalization import enrich, segment_signature, topic_exposure, TOPICS  # noqa: E402
 
 REPORT = Path(__file__).resolve().parents[2] / "eval" / "results" / "PERSONALIZATION.md"
 PRODUCT_COLUMNS = {"CL_PRODUCT_RKO_MARK": Product.RKO, "CL_PRODUCT_GAR_MARK": Product.GUARANTEE,
@@ -98,7 +98,7 @@ def news_signals():
     for news in load_news():
         req = SummaryRequest(trace_id="eval", mode=Mode.BANNER, company=placeholder, news=[news.item],
                              bank_materials=[b for b in bank if bank_topics.get(b.doc_id) == news.topic][:1])
-        from summary_branch.models import SummaryDraft
+        from summary_branch.domain.models import SummaryDraft
         draft = SummaryDraft.model_validate(honest_draft(req))
         claims, sources = DefaultEvidenceBinder().bind(draft, req)
         signals = DefaultContentScorer().score(req, draft, claims, sources)

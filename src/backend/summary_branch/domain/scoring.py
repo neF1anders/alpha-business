@@ -12,11 +12,11 @@ import re
 from datetime import datetime
 from typing import Callable, Optional
 
-from .models import (
+from ..domain.models import (
     Banner, Claim, ClaimType, CompanyContext, Confidence, ConfidenceComponents, ContentSignals,
     Decision, LeadRef, RankedNewsItem, Relationship, Severity, SourceKind, SourceRef, SummaryDraft, SummaryRequest, utcnow,
 )
-from .personalization import indirect_exposure, news_sectors, sector_match, topic_exposure
+from ..domain.personalization import indirect_exposure, news_sectors, sector_match, topic_exposure
 
 # --------------------------------------------------------------------------- параметры (вынести в конфиг)
 SOURCE_PRIOR = {SourceKind.PRIMARY: 1.0, SourceKind.BANK: 0.9, SourceKind.MEDIA: 0.6}
