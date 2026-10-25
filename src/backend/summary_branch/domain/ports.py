@@ -73,7 +73,7 @@ class BannerStore(Protocol):
 
 @runtime_checkable
 class Publisher(Protocol):
-    def to_dto(self, banner: Banner, seg: ClusterSummary) -> BannerDTO: ...
+    def to_dto(self, banner: Banner, seg: ClusterSummary, placements: list[str] | None = None) -> BannerDTO: ...
     def push(self, company_id: str, banners: list[BannerDTO]) -> None:
         """Новый баннер компании уходит подписчику (SSE открытой сессии)."""
 

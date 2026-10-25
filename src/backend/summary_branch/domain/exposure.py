@@ -37,6 +37,19 @@ _SECTOR_RANGES = (
 )
 
 
+# Страницы действий интернет-банка, где путь влияния уместен как плашка рядом с объектом
+_PLACEMENTS = {
+    ExposureKind.SUPPLIERS: ("payments", "new_payment"),
+    ExposureKind.BUYERS: ("payments", "counterparties"),
+    ExposureKind.AFFILIATES: ("counterparties",),
+    ExposureKind.PRODUCT: ("payments",),
+}
+
+
+def placements_for(paths: list[ExposurePath]) -> list[str]:
+    return list(dict.fromkeys(page for p in paths for page in _PLACEMENTS.get(p.kind, ())))
+
+
 def sector_name(division: str) -> str:
     if not division.isdigit():
         return division

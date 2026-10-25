@@ -5,9 +5,10 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Optional
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
 from ..application.ports import ProfileRepository
@@ -15,6 +16,7 @@ from ..application.use_cases import AnswerChat, BannersCommand, ChatCommand, Get
 from ..domain.errors import CompanyNotFound, DependencyUnavailable
 from ..domain.models import TraceStep
 from . import schemas
+from .client import ClientServices, register_client_api
 
 log = logging.getLogger("orchestrator.api")
 
@@ -25,9 +27,10 @@ class Container:
     get_banners: GetBanners
     answer_chat: AnswerChat
     startup: tuple[Callable[[], Awaitable[None]], ...] = ()   # выполняется до приёма запросов
+    client: Optional[ClientServices] = None                   # вход фронта `/api/companies/...`
 
 
-def create_app(container: Container) -> FastAPI:
+def create_app(container: Container, cors_origins: tuple[str, ...] = ()) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         for hook in container.startup:
@@ -35,7 +38,12 @@ def create_app(container: Container) -> FastAPI:
         yield
 
     app = FastAPI(title="Альфа Инсайты: оркестратор", version="0.1.0", lifespan=lifespan,
-                  description="Вход и выход системы: баннеры (SLO ~2 с) и чат (SLO ~6 с).")
+                  description="Вход и выход системы: баннеры (SLO ~4 с) и чат (SLO ~6 с).")
+    if cors_origins:
+        app.add_middleware(CORSMiddleware, allow_origins=list(cors_origins), allow_methods=["GET", "POST"],
+                           allow_headers=["Content-Type"])
+    if container.client is not None:
+        register_client_api(app, container.client)
 
     @app.get("/health")
     async def health() -> dict:

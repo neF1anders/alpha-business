@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from ..application.impact import MAX_IMPACTS
 from ..application.personal import FACTS_HEADLINE_RE, PATH_LINE_RE, PERSONAL_BEGIN
 from ..application.summarizer import BANK_BLOCK_RE, DATA_BEGIN, NEWS_BLOCK_RE, QUESTION_BLOCK_RE
 from ..domain.personalization import news_sectors
@@ -95,7 +96,8 @@ class FakeLLMClient:
             "severity": "attention" if topic in ("rate", "fx") else "watch",
             "claims": claims,
             "follow_ups": ["Что это значит для моих кредитов?"] if question else [],
-            "impacts": [] if question else [
+            # широкий отраслевой тег (десятки разделов) модель не сужает: карта пустая, пути строятся по тегам
+            "impacts": [] if question or len(sectors) > MAX_IMPACTS else [
                 {"division": division, "direction": "negative", "mechanism": "Издержки отрасли растут",
                  "evidence_ids": [lead["id"]]} for division in sectors],
         }

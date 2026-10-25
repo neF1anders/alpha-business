@@ -398,6 +398,7 @@ class BannerDTO(BaseModel):
     raw_news: bool = False                           # низкая уверенность: headline = заголовок новости, for_you пусто
     sources: list[SourceRef]
     expires_at: datetime
+    placements: list[str] = Field(default_factory=list)   # страницы действий для плашки: payments, counterparties, new_payment
 
 
 class ChatAnswer(BaseModel):

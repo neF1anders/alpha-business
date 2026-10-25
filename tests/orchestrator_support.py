@@ -57,9 +57,9 @@ class FakeBranch(TemplateSummaryBranch):
         if self.error:
             raise self.error
 
-    async def banners(self, req):
+    async def banner(self, req):
         await self._gate(req)
-        return await super().banners(req)
+        return await super().banner(req)
 
     async def chat(self, req):
         await self._gate(req)

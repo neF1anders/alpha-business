@@ -291,3 +291,9 @@ def test_lite_budget_does_not_retry():
     llm, rt = runtime(FakeLLMClient(tamper=fabricate_first(9)))
     rt.branch.banner(make_req(budget=BudgetTier.LITE))
     assert llm.call_count == 1
+
+
+def test_supplier_path_places_banner_on_payment_pages():
+    _, rt = runtime()
+    dto = rt.branch.banner(steel_req(wholesale_with_metal_suppliers()))
+    assert dto.placements == ["payments", "new_payment"]

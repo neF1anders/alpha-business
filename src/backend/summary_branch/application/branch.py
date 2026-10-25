@@ -13,7 +13,7 @@ from typing import Optional
 
 from ..config import BranchConfig
 from ..domain.errors import BudgetExhausted, SummarizationFailed
-from ..domain.exposure import exposure_paths, news_exposure_paths
+from ..domain.exposure import exposure_paths, news_exposure_paths, placements_for
 from ..domain.models import (
     BannerDTO, ChatAnswer, CompanyContext, Decision, ExposurePath, Mode, RankedNewsItem, SourceRef, SummaryRequest,
 )
@@ -91,7 +91,8 @@ class DefaultSummaryBranch:
         personal = self._personal_writer.write(summary, company, paths, role=req.role, trace_id=req.trace_id,
                                                budget=req.budget)
         banner = self._composer.compose(summary, company, confidence, personal)
-        dto = self._publisher.to_dto(banner, summary)
+        used = [p for p in paths if p.path_id in personal.path_ids] or paths[:1]
+        dto = self._publisher.to_dto(banner, summary, placements_for(used))
         if self._store.put(banner, dto):
             self._publisher.push(company.company_id, [dto])
         log.info("баннер сохранён: trace_id=%s banner=%s company=%s decision=%s personal_model=%s", req.trace_id,

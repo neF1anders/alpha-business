@@ -30,7 +30,9 @@ class BannersTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.degraded, ())
         req = branch.requests[0]
         self.assertEqual((req.mode, req.company.role, req.question), (Mode.BANNER, "ceo", None))
-        self.assertEqual([r.item.news_id for r in req.news], ["n1", "n2"])
+        # ветка вызывается по каждой новости отдельно
+        self.assertEqual(sorted(r.item.news_id for q in branch.requests for r in q.news), ["n1", "n2"])
+        self.assertTrue(all(len(q.news) == 1 for q in branch.requests))
         self.assertEqual([s.name for s in result.steps], ["profile", "retrieve", "rerank", "summary_branch"])
 
     async def test_retriever_gets_only_matchable_tags(self):
@@ -133,11 +135,11 @@ class EventContextIntegrationTests(unittest.IsolatedAsyncioTestCase):
         service=GetBanners(FakeProfiles(PROFILE),FakeRetriever(fresh(NEWS),BANK),TagReranker(),
                           branch,Limits(),event_retriever=events)
         result=await service.execute(BannersCommand('U_1'))
-        req=branch.requests[0]
-        self.assertEqual(events.retrieve.await_count,len(req.news))
+        self.assertEqual(events.retrieve.await_count,len(branch.requests))
         self.assertTrue(all('product:credit' in call.args[1].tags for call in events.retrieve.await_args_list))
-        self.assertEqual(len(req.bank_materials),1)
-        self.assertEqual(set(req.bank_materials[0].news_ids),{r.item.news_id for r in req.news})
+        for req in branch.requests:                    # материал банка идёт к той новости, к которой он привязан
+            self.assertEqual(len(req.bank_materials),1)
+            self.assertIn(req.news[0].item.news_id,req.bank_materials[0].news_ids)
         self.assertIn('event_context',[s.name for s in result.steps])
 
     async def test_context_failure_keeps_news_but_drops_unrelated_legacy_evidence(self):

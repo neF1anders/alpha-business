@@ -119,11 +119,49 @@ class SourceRef:
     kind: SourceKind
     title: str
     url: str
+    ref_id: str = ""                                 # news_id или doc_id: связь утверждения чата с источником
+
+
+@dataclass(frozen=True)
+class CounterpartySector:
+    """Контрагенты одной отрасли с одной стороны платёжного потока; без имён и сумм."""
+    division: str                                    # двузначный раздел ОКВЭД
+    name: str
+    share: float                                     # доля суммы потока этой стороны, 0..1
+    counterparties: int
+    foreign_trade_share: float = 0.0                 # доля суммы с контрагентами, у которых есть ВЭД
+
+
+@dataclass(frozen=True)
+class CompanyDossier:
+    """Всё, что данные банка говорят о компании сверх тегов: профиль, платёжный граф, связанные компании.
+
+    Платежи внутри группы и между компаниями с общими физлицами исключены: это переводы «себе».
+    """
+    okved_code: str = ""
+    okved_name: str = ""
+    region: str = ""
+    city: str = ""
+    client_type: str = ""                            # client | prospect | close_client
+    products: frozenset[str] = frozenset()           # rko, guarantee, loan, leasing, deposit, payroll, factoring
+    trade_countries: tuple[str, ...] = ()
+    foreign_trade: bool = False
+    revenue: Optional[float] = None
+    workers_band: str = ""
+    lifecycle: str = ""
+    age_band: str = ""
+    negative_flag: bool = False
+    group_id: str = ""
+    suppliers: tuple[CounterpartySector, ...] = ()   # компания платит; по убыванию доли
+    buyers: tuple[CounterpartySector, ...] = ()      # платят компании
+    top_supplier_share: float = 0.0
+    top_buyer_share: float = 0.0
+    affiliate_sectors: tuple[str, ...] = ()          # разделы ОКВЭД компаний группы и связанных через общих лиц
 
 
 @dataclass(frozen=True)
 class SummaryRequest:
-    """Контракт «оркестратор -> ветка саммари». Повторяет `summary_branch.models.SummaryRequest`."""
+    """Контракт «оркестратор -> ветка саммари». В режиме banner `news` содержит одну новость (один кластер)."""
     trace_id: str
     mode: Mode
     company: CompanyProfile
@@ -131,6 +169,7 @@ class SummaryRequest:
     bank_materials: tuple[BankMaterial, ...] = ()
     question: Optional[str] = None
     budget: BudgetTier = BudgetTier.FULL
+    dossier: Optional[CompanyDossier] = None
 
 
 @dataclass(frozen=True)
@@ -144,6 +183,19 @@ class Banner:
     expires_at: datetime
     caveat: bool = False
     raw_news: bool = False                           # деградация: только заголовок новости и ссылка
+    cluster_id: str = ""
+    placements: tuple[str, ...] = ()                 # страницы действий для плашки: payments, counterparties, new_payment
+
+
+def raw_banner_id(cluster_id: str) -> str:
+    """Id баннера «только новость»: по нему клиент заменяет его готовым баннером того же кластера."""
+    return f"raw-{cluster_id}"
+
+
+@dataclass(frozen=True)
+class Evidence:
+    ref_id: str
+    quote: str = ""
 
 
 @dataclass(frozen=True)
@@ -151,6 +203,8 @@ class Claim:
     kind: str                                        # fact | bank | model | hypothesis
     text: str
     source_urls: tuple[str, ...] = ()
+    evidence: tuple[Evidence, ...] = ()
+    grounding: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -170,3 +224,11 @@ class TraceStep:
     duration_ms: float
     ok: bool = True
     detail: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class SignalEvent:
+    """Событие открытой сессии клиента: новые баннеры или снятие устаревших (по id)."""
+    kind: str                                        # banners | invalidate
+    banners: tuple[Banner, ...] = ()
+    banner_ids: tuple[str, ...] = ()

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Optional
 
 from ..domain.models import (
     Banner, ChatAnswer, Claim, RankedNews, Severity, SourceKind, SourceRef, SummaryRequest, utcnow,
@@ -23,24 +24,22 @@ def _factor(r: RankedNews) -> str:
 
 
 def _sources(r: RankedNews) -> tuple[SourceRef, ...]:
-    return (SourceRef(r.item.source_kind, r.item.title, r.item.url),)
+    return (SourceRef(r.item.source_kind, r.item.title, r.item.url, r.item.news_id),)
 
 
 class TemplateSummaryBranch:
-    async def banners(self, req: SummaryRequest) -> list[Banner]:
-        out: list[Banner] = []
-        for r in req.news:
-            factor = _factor(r)
-            severity = _FACTOR_SEVERITY.get(factor, Severity.WATCH)
-            label = {Severity.ATTENTION: "Внимание", Severity.WATCH: "Наблюдение",
-                     Severity.OPPORTUNITY: "Возможность"}[severity]
-            if factor:
-                label = f"{label} · {_FACTOR_LABEL[factor]}"
-            out.append(Banner(
-                banner_id=f"{req.company.company_id}:{r.item.cluster_id}", severity=severity, label=label,
-                headline=r.item.title, for_you="", sources=_sources(r),
-                expires_at=utcnow() + timedelta(hours=36), caveat=True, raw_news=True))
-        return out
+    async def banner(self, req: SummaryRequest) -> Optional[Banner]:
+        r = req.news[0]
+        factor = _factor(r)
+        severity = _FACTOR_SEVERITY.get(factor, Severity.WATCH)
+        label = {Severity.ATTENTION: "Внимание", Severity.WATCH: "Наблюдение",
+                 Severity.OPPORTUNITY: "Возможность"}[severity]
+        if factor:
+            label = f"{label} · {_FACTOR_LABEL[factor]}"
+        return Banner(
+            banner_id=f"{req.company.company_id}:{r.item.cluster_id}", severity=severity, label=label,
+            headline=r.item.title, for_you="", sources=_sources(r),
+            expires_at=utcnow() + timedelta(hours=36), caveat=True, raw_news=True, cluster_id=r.item.cluster_id)
 
     async def chat(self, req: SummaryRequest) -> ChatAnswer:
         top = req.news[0]

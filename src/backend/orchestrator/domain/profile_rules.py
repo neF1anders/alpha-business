@@ -4,7 +4,10 @@
 """
 from __future__ import annotations
 
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
+
+if TYPE_CHECKING:
+    from .models import CompanyDossier
 
 UNKNOWN = "unknown"
 
@@ -55,3 +58,33 @@ def features_of(tags: Iterable[str]) -> tuple[str, ...]:
     if regions:
         out.append(f"регион: {regions[0]}")
     return tuple(out)
+
+
+# Диапазоны двузначного ОКВЭД -> тег `sector:*` (как в scripts/build_tags.py и docs/tags.md)
+SECTOR_RANGES = (
+    (1, 3, "agro"), (5, 9, "mining"), (10, 33, "manufacturing"), (35, 35, "energy"),
+    (36, 39, "utilities"), (41, 43, "construction"), (45, 47, "trade"), (49, 53, "transport"),
+    (55, 56, "horeca"), (58, 63, "it_telecom"), (64, 66, "finance"), (68, 68, "real_estate"),
+    (69, 75, "prof_services"), (77, 82, "admin_services"), (84, 84, "public"), (85, 85, "education"),
+    (86, 88, "health"), (90, 93, "culture_sport"), (94, 96, "other_services"),
+)
+COUNTERPARTY_MIN_SHARE = 0.1     # отрасль контрагентов, через которую идёт хотя бы десятая часть потока
+COUNTERPARTY_SEARCH_LIMIT = 3
+
+
+def sector_of_division(division: str) -> str | None:
+    if not division.isdigit():
+        return None
+    code = int(division)
+    return next((name for low, high, name in SECTOR_RANGES if low <= code <= high), None)
+
+
+def counterparty_search_tags(dossier: "CompanyDossier") -> frozenset[str]:
+    """Теги `sector:*` ключевых отраслей поставщиков и покупателей: по ним ищутся новости о нишах партнёров."""
+    sides = sorted((*dossier.suppliers, *dossier.buyers), key=lambda s: s.share, reverse=True)
+    tags: list[str] = []
+    for side in sides:
+        sector = sector_of_division(side.division)
+        if side.share >= COUNTERPARTY_MIN_SHARE and sector and f"sector:{sector}" not in tags:
+            tags.append(f"sector:{sector}")
+    return frozenset(tags[:COUNTERPARTY_SEARCH_LIMIT])
