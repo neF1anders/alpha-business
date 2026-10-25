@@ -37,5 +37,5 @@ class DefaultPublisher:
 
     def _label(self, banner: Banner) -> str:
         severity = self._config.severity_labels_ru.get(banner.severity.value, banner.severity.value)
-        topic = self._config.topic_labels_ru.get(banner.topic, banner.topic)
-        return f"{severity} · {topic}"
+        topic = self._config.topic_labels_ru.get(banner.topic)
+        return f"{severity} · {topic}" if topic else severity   # тема вне словаря не показывается служебным кодом

@@ -25,7 +25,6 @@ Python 3.12 и PostgreSQL 17. Сначала подготовьте таблиц
 Python-команды сами `.env` не загружают. Не вставляйте пароль в команды или Git.
 
 ```sh
-python3.12 -m venv .venv
 uv sync
 uv run python -m ingestion init-db
 ```

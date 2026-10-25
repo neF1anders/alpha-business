@@ -1,3 +1,18 @@
+# One backend image (Dockerfile) for every Python service: torch and the other heavy dependencies are built once.
+x-backend: &backend
+  build:
+    context: .
+  image: alpha-insights-backend
+  environment: &backend-env
+    PGHOST: db
+    PGPORT: 5432
+    PGDATABASE: insights
+    PGUSER: insights
+    PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+  depends_on:
+    db:
+      condition: service_healthy
+
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -15,39 +30,34 @@ services:
       timeout: 3s
       retries: 20
   ingest:
-    build:
-      context: .
-      dockerfile: Dockerfile.ingest
-    environment:
-      PGHOST: db
-      PGPORT: 5432
-      PGDATABASE: insights
-      PGUSER: insights
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    <<: *backend
+    entrypoint: ["python", "-m", "ingestion"]
     volumes:
       - ./data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
     profiles: [tools]
   orchestrator:
-    build:
-      context: .
-      dockerfile: Dockerfile.orchestrator
+    <<: *backend
+    command: ["python", "-m", "orchestrator"]
     ports:
       - "127.0.0.1:${ORCHESTRATOR_PORT:-8000}:8000"
     environment:
-      PGHOST: db
-      PGPORT: 5432
-      PGDATABASE: insights
-      PGUSER: insights
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      <<: *backend-env
       REPORTS_PATH: /app/data/raw/reports
+      API_KEY: ${API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODELS_BANNER: ${LLM_MODELS_BANNER:-}
+      LLM_MODELS_CHAT: ${LLM_MODELS_CHAT:-}
+      LLM_MODE: ${LLM_MODE:-}
+      DEMO_COMPANY_ID: ${DEMO_COMPANY_ID:-}
+      NEWS_SEARCH_MODE: ${NEWS_SEARCH_MODE:-lexical}
+      BANNER_SLO_S: ${BANNER_SLO_S:-3.5}
     volumes:
       - ./data/processed/company_tags.csv:/app/data/processed/company_tags.csv:ro
       - ${REPORTS_PATH:-./data/raw/reports}:/app/data/raw/reports:ro
-    depends_on:
-      db:
-        condition: service_healthy
+      - banner-store:/app/data/cache
+      - model-cache:/root/.cache/huggingface
+
 volumes:
   insights-db:
+  banner-store:
+  model-cache:

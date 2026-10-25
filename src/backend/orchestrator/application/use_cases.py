@@ -350,11 +350,14 @@ class AnswerChat(_Pipeline):
         return self._result(trace, answer)
 
     async def _search_text(self, cmd: ChatCommand) -> Optional[str]:
-        """Вопрос из баннера («Подробнее») ищется вместе с заголовком баннера, иначе «что это значит» ничего не найдёт."""
+        """Вопрос из баннера («Подробнее») ищется по заголовку его новости: «что это значит для меня» сам ничего не найдёт,
+        а личный заголовок баннера и слова вопроса только мешают полнотекстовому поиску."""
         if not cmd.banner_id or self._feed is None:
             return None
         banner = await self._feed.get(cmd.company_id, cmd.banner_id)
-        return f"{banner.headline}. {cmd.question}" if banner else None
+        if banner is None:
+            return None
+        return banner.sources[0].title if banner.sources else banner.headline
 
     @staticmethod
     def _raw_answer(top: RankedNews) -> ChatAnswer:

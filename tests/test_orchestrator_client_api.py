@@ -110,12 +110,12 @@ class ClientApiTests(unittest.TestCase):
         refs = {s["ref_id"] for s in answer["sources"]}
         self.assertTrue(any(e["ref_id"] in refs for c in answer["claims"] for e in c["evidence"]))
 
-    def test_chat_from_banner_searches_with_banner_headline(self):
+    def test_chat_from_banner_searches_by_its_news_title(self):
         retriever = FakeRetriever([STEEL, RATE])
         client, _, _ = make_client(retriever)
         banner = client.get("/api/companies/U_1/signals").json()["items"][0]
         client.post("/api/companies/U_1/chat", json={"question": "Что это значит?", "banner_id": banner["banner_id"]})
-        self.assertTrue(retriever.queries[-1].question.startswith(banner["headline"]))
+        self.assertEqual(retriever.queries[-1].question, banner["sources"][0]["title"])
 
     def test_errors_use_frontend_format(self):
         r = self.client.get("/api/companies/U_404/signals")
