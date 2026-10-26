@@ -56,6 +56,12 @@ class RerankerTests(unittest.TestCase):
         self.assertEqual(self.rank(items), [])
         self.assertEqual(len(self.rank(items, require_tag_match=False)), 1)
 
+    def test_chat_prefers_the_answer_to_the_question_over_profile_tags(self):
+        answer = news(1, {"country:КИТАЙ"}, score=0.9)                    # отвечает на вопрос
+        broad = news(2, {"factor:key_rate", "factor:consumer_demand", "sector:trade"}, score=0.3)
+        self.assertEqual(self.rank([answer, broad], require_tag_match=False)[0].item.news_id, "n1")
+        self.assertEqual(self.rank([answer, broad])[0].item.news_id, "n2")   # лента: по профилю
+
     def test_scores_stay_in_unit_interval(self):
         for r in self.rank([news(i, {"factor:key_rate", "sector:trade", "okved:47"}, days=0, kind=SourceKind.PRIMARY,
                                  score=1.0) for i in range(3)]):
