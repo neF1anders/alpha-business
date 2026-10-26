@@ -13,6 +13,7 @@ class Settings:
     chat_slo_s: float = 6.0
     news_search_mode: str = "lexical"
     news_candidate_limit: int = 80
+    news_briefs: bool = True                         # заголовки и анонсы из news_briefs, с пометкой для клиента
     llm_mode: str = ""                               # gateway | fake | template; пусто — gateway при API_KEY, иначе fake
     banner_store_path: str = "data/cache/banners.db"
     demo_company_id: str = ""                        # клиент фронта по умолчанию (`demo-company`)
@@ -29,6 +30,7 @@ class Settings:
         return cls(
             news_candidate_limit=int(os.environ.get("NEWS_CANDIDATE_LIMIT", cls.news_candidate_limit)),
             news_search_mode=os.environ.get("NEWS_SEARCH_MODE", cls.news_search_mode),
+            news_briefs=os.environ.get("NEWS_BRIEFS", "1") != "0",
             tags_path=os.environ.get("COMPANY_TAGS_PATH", cls.tags_path),
             reports_path=os.environ.get("REPORTS_PATH", cls.reports_path),
             banner_slo_s=float(os.environ.get("BANNER_SLO_S", cls.banner_slo_s)),

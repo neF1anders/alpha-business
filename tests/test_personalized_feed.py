@@ -11,9 +11,8 @@ from orchestrator.domain.models import NewsQuery
 from orchestrator.domain.news_quality import historical_retrospective
 from orchestrator.domain.ranking import TagReranker
 from orchestrator.application.use_cases import BannersCommand,GetBanners,Limits
-from retrieval.feed import LocalFeedRetriever
-from retrieval.needs import balanced_candidates,monitoring_queries,profile_context_queries
-from retrieval.reranker import LocalPairReranker
+from retrieval.domain.needs import balanced_candidates,monitoring_queries,profile_context_queries
+from retrieval.interfaces.orchestrator_ports import LocalFeedRetriever,LocalPairReranker
 from tests.orchestrator_support import NOW,PROFILE,FakeBranch,FakeProfiles,FakeRetriever,news
 
 P=replace(PROFILE,activity='Торговля оптовая рыбой')
@@ -59,8 +58,8 @@ class TopicQualityTests(unittest.TestCase):
 
 class PairRankingTests(unittest.TestCase):
     def make_ranker(self,scores):
-        r=LocalPairReranker();r.tokenizer=SimpleNamespace(encode=lambda *a,**k:[1])
-        r.score_pairs=Mock(return_value=scores);return r
+        r=LocalPairReranker();r.scorer=SimpleNamespace(token_count=lambda text:1,
+                                                       score_pairs=Mock(return_value=scores));return r
 
     def test_missing_rule_tags_and_negative_logits_do_not_drop_semantic_candidate(self):
         r=self.make_ranker([-2.,-1.])
@@ -78,12 +77,12 @@ class PairRankingTests(unittest.TestCase):
         ranked=r.rerank(P,[long,duplicate,history,future],5,now=NOW)
         self.assertEqual([x.item.news_id for x in ranked],['n2'])
         self.assertEqual(len(long.text),10000)
-        self.assertLess(len(r.score_pairs.call_args.args[0][0][1]),2500)
+        self.assertLess(len(r.scorer.score_pairs.call_args.args[0][0][1]),2500)
 
     def test_busy_model_and_error_release(self):
         r=self.make_ranker([]);r._lock.acquire()
         with self.assertRaises(DependencyUnavailable):r.rerank(P,[news(1,set())],5,now=NOW)
-        r._lock.release();r.score_pairs.side_effect=RuntimeError('model failed')
+        r._lock.release();r.scorer.score_pairs.side_effect=RuntimeError('model failed')
         with self.assertRaises(RuntimeError):r.rerank(P,[news(1,set())],5,now=NOW)
         self.assertTrue(r._lock.acquire(blocking=False));r._lock.release()
 
@@ -91,7 +90,7 @@ class PairRankingTests(unittest.TestCase):
         r=self.make_ranker([]);item=news(1,{'factor:key_rate'})
         self.assertTrue(r.rerank(PROFILE,[item],5,now=NOW))
         self.assertTrue(r.rerank(P,[item],5,now=NOW,require_tag_match=False))
-        r.score_pairs.assert_not_called()
+        r.scorer.score_pairs.assert_not_called()
 
 
 class FeedTests(unittest.IsolatedAsyncioTestCase):

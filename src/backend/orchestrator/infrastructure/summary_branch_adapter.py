@@ -77,7 +77,8 @@ def to_branch_request(req: SummaryRequest) -> branch.SummaryRequest:
         news=[_news(r) for r in req.news],
         bank_materials=[branch.BankMaterialRef(doc_id=m.doc_id, title=m.title, page=m.page, claim_text=m.claim_text,
                                                url=m.url) for m in req.bank_materials],
-        budget=branch.BudgetTier(req.budget.value))
+        budget=branch.BudgetTier(req.budget.value),
+        history=[branch.DialogueTurn(role=t.role, text=t.text) for t in req.history])
 
 
 def to_company_context(profile: CompanyProfile, dossier: Optional[CompanyDossier]) -> branch.CompanyContext:
@@ -107,7 +108,8 @@ def _news(ranked) -> branch.RankedNewsItem:
     return branch.RankedNewsItem(
         news_id=item.news_id, cluster_id=item.cluster_id, title=item.title, text=item.text,
         source_kind=branch.SourceKind(item.source_kind.value), url=item.url, primary_url=item.primary_url,
-        published_at=published, tags=news_tags(item.tags), rerank_score=min(max(ranked.score, 0.0), 1.0))
+        published_at=published, tags=news_tags(item.tags), rerank_score=min(max(ranked.score, 0.0), 1.0),
+        content_kind=item.content_kind)
 
 
 def _profile_from_dossier(d: CompanyDossier) -> branch.CompanyProfile:
@@ -184,4 +186,4 @@ def answer_from_branch(answer: branch.ChatAnswer) -> ChatAnswer:
 
 
 def _source(s: branch.SourceRef) -> SourceRef:
-    return SourceRef(SourceKind(s.kind.value), s.title, s.url, s.ref_id)
+    return SourceRef(SourceKind(s.kind.value), s.title, s.url, s.ref_id, s.content_kind)

@@ -108,7 +108,8 @@ class DefaultEvidenceBinder:
         for ref_id in used_ids:
             if ref_id in news_by_id:
                 news = news_by_id[ref_id]
-                add(SourceRef(kind=news.source_kind, title=news.title, url=news.url, ref_id=ref_id))
+                add(SourceRef(kind=news.source_kind, title=news.title, url=news.url, ref_id=ref_id,
+                              content_kind=news.content_kind))
                 if news.primary_url:
                     add(SourceRef(kind=SourceKind.PRIMARY, title=news.title, url=news.primary_url, ref_id=ref_id))
             else:

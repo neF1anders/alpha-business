@@ -13,10 +13,10 @@ from psycopg.rows import dict_row
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from ingestion import database
+from tests.ingestion_support import database
 from orchestrator.domain.models import NewsQuery
 from orchestrator.api.materials import register_materials, registered_pdf
-from retrieval.news import PostgresNewsRetriever
+from retrieval.interfaces.orchestrator_ports import PostgresNewsRetriever
 
 AS_OF = datetime(2026,9,14,12,tzinfo=timezone.utc)
 
@@ -24,7 +24,7 @@ AS_OF = datetime(2026,9,14,12,tzinfo=timezone.utc)
 class BoundariesTests(unittest.IsolatedAsyncioTestCase):
     async def test_invalid_input_and_unknown_profile_do_not_connect(self):
         r=PostgresNewsRetriever()
-        with patch('retrieval.news.open_connection',new_callable=AsyncMock) as conn:
+        with patch('retrieval.infrastructure.postgres_news.open_connection',new_callable=AsyncMock) as conn:
             for query in [NewsQuery(frozenset(),limit=101),NewsQuery(frozenset(),question=' '),
                           NewsQuery(frozenset(),as_of=datetime(2026,1,1)),
                           NewsQuery(frozenset(),question='x'*2001)]:
@@ -34,7 +34,7 @@ class BoundariesTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_connection_timeout_and_cancellation_are_bounded(self):
         async def slow():await asyncio.sleep(10)
-        with patch('retrieval.news.open_connection',side_effect=slow):
+        with patch('retrieval.infrastructure.postgres_news.open_connection',side_effect=slow):
             with self.assertRaises(TimeoutError):
                 await PostgresNewsRetriever(timeout_s=0.02).retrieve(NewsQuery(frozenset({'factor:key_rate'})))
 
@@ -77,11 +77,11 @@ class NewsRetrievalTests(unittest.IsolatedAsyncioTestCase):
         cls.admin=psycopg.connect(os.environ.get('DATABASE_URL',''),autocommit=True)
         cls.name='insights_news_search_'+uuid.uuid4().hex
         cls.admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(cls.name)))
-        cls.connect_patch=patch('ingestion.database.connect',side_effect=lambda:psycopg.connect(cls.admin.info.dsn,dbname=cls.name))
+        cls.connect_patch=patch('ingestion.infrastructure.postgres.connect',side_effect=lambda:psycopg.connect(cls.admin.info.dsn,dbname=cls.name))
         cls.connect_patch.start();database.initialize()
         async def connect_async():
             return await psycopg.AsyncConnection.connect(cls.admin.info.dsn,dbname=cls.name,row_factory=dict_row)
-        cls.async_patch=patch('retrieval.news.open_connection',new=connect_async)
+        cls.async_patch=patch('retrieval.infrastructure.postgres_news.open_connection',new=connect_async)
         cls.async_patch.start()
         with database.connect() as c:
             c.execute("INSERT INTO insights.news_imports VALUES (%s,'test',6,'{}','{}',now())",('a'*64,))
@@ -131,6 +131,32 @@ class NewsRetrievalTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(reply.news,())
         with database.connect() as c:self.assertEqual(c.execute('SELECT count(*) FROM insights.news_articles').fetchone()[0],6)
 
+    async def test_chat_matches_question_lemmas_not_every_word(self):
+        # A natural question rarely repeats an article word for word: half of its terms is enough.
+        r=PostgresNewsRetriever(timeout_s=2)
+        reply=await r.retrieve(NewsQuery(frozenset(),question='Насколько вырос курс юаня к рублю?',as_of=AS_OF))
+        self.assertEqual([n.news_id for n in reply.news],['n6'])
+        reply=await r.retrieve(NewsQuery(frozenset(),question='Какие доходы у марсианских магазинов?',as_of=AS_OF))
+        self.assertEqual(reply.news,())
+
+    async def test_brief_is_marked_and_ranked_below_the_full_article(self):
+        with database.connect() as c:
+            c.execute('''INSERT INTO insights.news_briefs
+                (news_id,url,title,excerpt,content_kind,source,source_kind,published_at,source_record,first_import_sha256)
+                VALUES ('b1','https://example.org/b1','Курс юаня вырос на бирже','', 'title_only','test','media',
+                        '2026-09-12T11:00:00Z','{}',%s),
+                       ('n6','https://example.org/b6','Курс юаня вырос','Анонс','excerpt','test','media',
+                        '2026-09-12T11:00:00Z','{}',%s)''',('a'*64,'a'*64))
+        try:
+            r=PostgresNewsRetriever(timeout_s=2,bank_enabled=False)
+            reply=await r.retrieve(NewsQuery(frozenset(),question='Насколько вырос курс юаня к рублю?',as_of=AS_OF))
+            self.assertEqual([(n.news_id,n.content_kind) for n in reply.news],[('n6','full_text'),('b1','title_only')])
+            self.assertEqual(reply.news[1].text,'Курс юаня вырос на бирже')   # title stands in for the missing text
+            off=PostgresNewsRetriever(timeout_s=2,bank_enabled=False,include_briefs=False)
+            self.assertEqual([n.news_id for n in (await off.retrieve(NewsQuery(frozenset(),question='курс юаня',as_of=AS_OF))).news],['n6'])
+        finally:
+            with database.connect() as c:c.execute("DELETE FROM insights.news_briefs")
+
     async def test_unavailable_pdf_is_not_returned_as_a_broken_link(self):
         with tempfile.TemporaryDirectory() as tmp:
             result=await PostgresNewsRetriever(timeout_s=2,reports_root=tmp).retrieve(
@@ -159,7 +185,7 @@ class NewsRetrievalTests(unittest.IsolatedAsyncioTestCase):
             with database.connect() as c:c.execute("DELETE FROM insights.news_articles WHERE news_id IN ('n7','n8')")
 
     async def test_database_enforces_read_only_transaction(self):
-        with patch('retrieval.news.NEWS_SQL','DELETE FROM insights.news_articles'):
+        with patch('retrieval.infrastructure.postgres_news.NEWS_SQL','DELETE FROM insights.news_articles'):
             with self.assertRaises(psycopg.errors.ReadOnlySqlTransaction):
                 await PostgresNewsRetriever(timeout_s=2).retrieve(NewsQuery(frozenset({'factor:key_rate'}),as_of=AS_OF))
         with database.connect() as c:self.assertEqual(c.execute('SELECT count(*) FROM insights.news_articles').fetchone()[0],6)

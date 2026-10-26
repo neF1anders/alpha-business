@@ -24,7 +24,7 @@ def _factor(r: RankedNews) -> str:
 
 
 def _sources(r: RankedNews) -> tuple[SourceRef, ...]:
-    return (SourceRef(r.item.source_kind, r.item.title, r.item.url, r.item.news_id),)
+    return (SourceRef(r.item.source_kind, r.item.title, r.item.url, r.item.news_id, r.item.content_kind),)
 
 
 class TemplateSummaryBranch:

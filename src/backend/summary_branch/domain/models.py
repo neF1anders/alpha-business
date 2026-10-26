@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -149,6 +149,12 @@ class CompanyProfile(BaseModel):
         return self
 
 
+class DialogueTurn(BaseModel):
+    """Реплика предыдущего диалога в чате. Контекст вопроса, не источник: утверждения на неё не опираются."""
+    role: Literal["user", "assistant"]
+    text: str = Field(max_length=600)
+
+
 class UserContext(BaseModel):
     user_id: str
     role: str = "cfo"
@@ -164,6 +170,9 @@ class CompanyContext(BaseModel):
     profile: Optional[CompanyProfile] = None         # сырой профиль; без него работаем только по tags и features
 
 
+ContentKind = Literal["full_text", "excerpt", "title_only"]
+
+
 class RankedNewsItem(BaseModel):
     news_id: str
     cluster_id: str
@@ -175,6 +184,7 @@ class RankedNewsItem(BaseModel):
     published_at: datetime
     tags: list[str] = Field(default_factory=list)
     rerank_score: float = Field(default=0.0, ge=0, le=1)
+    content_kind: ContentKind = "full_text"          # excerpt / title_only: статья не скачана, есть только анонс
 
 
 class BankMaterialRef(BaseModel):
@@ -196,6 +206,7 @@ class SummaryRequest(BaseModel):
     bank_materials: list[BankMaterialRef] = Field(default_factory=list)
     budget: BudgetTier = BudgetTier.FULL
     previous_problems: list[str] = Field(default_factory=list)   # причины отказа прошлой попытки, только для повтора
+    history: list[DialogueTurn] = Field(default_factory=list, max_length=4)   # только для chat, старые первыми
 
     @property
     def role(self) -> str:
@@ -262,6 +273,7 @@ class SourceRef(BaseModel):
     title: str
     url: str
     ref_id: str = ""                                 # news_id или doc_id: связывает EvidenceRef.ref_id с источником
+    content_kind: ContentKind = "full_text"
 
 
 class SectorImpact(BaseModel):

@@ -153,18 +153,26 @@ docker compose run --rm ingest load-news --format chunks --source data/processed
 
 ## 5а. Статьи для ленты и чата
 
-Лента баннеров и чат читают `insights.news_articles`, а не `rag_chunks`.
-Заголовки и анонсы туда пока не попадают: таблица хранит только полные тексты
-(не короче 200 символов). Полные статьи из объединённого файла можно загрузить
-так же, как из `news.jsonl`; уже загруженные статьи не дублируются:
+Лента баннеров и чат читают полные статьи из `insights.news_articles` и заголовки
+с анонсами из `insights.news_briefs`, а не `rag_chunks`:
 
 ```powershell
-docker compose run --rm ingest load-news --source data/raw/reports/news_combined.jsonl
+docker compose run --rm ingest load-news --source data/raw/reports/news_combined.jsonl --include-partial
 ```
 
-Для текущего файла это 5 869 статей, все они уже есть в `news.jsonl`, поэтому
-команда добавит 0 записей. Неполные материалы доступны через `rag_chunks`
-и CLI-поиск; подключение их к ленте с пометкой «по анонсу» — отдельная задача.
+Полные статьи (5 869, все уже есть в `news.jsonl`) идут в `news_articles`, поэтому
+добавится 0 статей. С `--include-partial` записи `metadata_only` и `short_excerpt`
+(41 399) идут в `news_briefs` с полем `content_kind`: `excerpt` (10 707) или
+`title_only` (30 692). Дубли (`duplicate_of`) пропускаются; анонс никогда не заменяет
+полную статью с тем же `news_id` или URL. Повторный запуск возвращает `unchanged`.
+
+Как это видит клиент:
+
+- в поиске полная статья весит больше анонса, анонс — больше голого заголовка (×1; ×0,85; ×0,7);
+- модель получает `content="excerpt|title_only"` и правило пересказывать только написанное;
+- у источника в API есть `content_kind`, фронт подписывает его «анонс» или «только заголовок».
+
+Отключить анонсы в ленте без перезагрузки данных: `NEWS_BRIEFS=0` у оркестратора.
 
 ## 6. Проверить результат
 

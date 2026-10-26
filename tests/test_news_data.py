@@ -3,7 +3,10 @@ import tempfile
 import json
 from pathlib import Path
 
-from ingestion.news_data import canonical_url, extract_article, merge_urls, parse_feed, published_date, load_article_cache, digest
+from ingestion.application.collect_news import load_article_cache
+from ingestion.domain.news_feeds import merge_urls, parse_feed, published_date
+from ingestion.domain.news_html import extract_article
+from ingestion.domain.news_urls import canonical_url, digest
 
 
 class NewsDataTests(unittest.TestCase):

@@ -6,7 +6,7 @@ import re
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
 
-from retrieval.news import open_connection
+from retrieval.infrastructure.connection import open_connection
 
 
 def registered_pdf(root, filename):

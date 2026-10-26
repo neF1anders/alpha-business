@@ -5,11 +5,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from ingestion.common import write_json
-from ingestion.database import validate_document
-from ingestion.news_documents import prepare_news, artifact_paths
-from ingestion.tagging import Vocabulary, Tagger, SemanticSector, choose_sector, tag_artifacts
-from ingestion.taxonomy import SECTORS
+from tests.ingestion_support import write_json
+from ingestion.domain.document_rules import validate_document
+from tests.ingestion_support import prepare_news, artifact_paths
+from ingestion.domain.tagging import Tagger, choose_sector
+from ingestion.infrastructure.sentence_sector import SemanticSector
+from ingestion.infrastructure.tagging_sources import tagging_source_digests
+from ingestion.infrastructure.vocabulary_csv import load_vocabulary
+from tests.ingestion_support import tag_artifacts
+from ingestion.domain.taxonomy import SECTORS
 
 
 def article(key='one', text='Банк России сохранил ключевую ставку. В Китае вырос спрос на нефть.'):
@@ -31,7 +35,7 @@ def vocabulary(root):
         writer.writeheader()
         for region in ['Москва', 'Московская область', 'Башкортостан (Республика)', 'Республика Татарстан']:
             writer.writerow(dict(FTS_FLAG='1', FTS_COUNTRY_NAME='КИТАЙ, США, ТУРЦИЯ', REGION=region))
-    return Vocabulary(path), path
+    return load_vocabulary(path), path
 
 
 class NewsTests(unittest.TestCase):
@@ -141,15 +145,16 @@ class ImportRoutingTests(unittest.TestCase):
         from ingestion.__main__ import main
         with patch('sys.argv', ['ingestion', 'prepare-news', '--source', 'combined.jsonl',
                                 '--include-partial', '--dry-run']), \
-                patch('ingestion.news_documents.prepare_news', return_value={}) as prepare, \
-                patch('ingestion.tagging.SemanticSector', side_effect=AssertionError('No embeddings')), \
-                patch('ingestion.database.connect', side_effect=AssertionError('No database')):
+                patch('ingestion.interfaces.cli.prepare_news', return_value={}) as prepare, \
+                patch('ingestion.interfaces.composition.SemanticSector', side_effect=AssertionError('No embeddings')), \
+                patch('ingestion.infrastructure.postgres.connect', side_effect=AssertionError('No database')):
             main()
-            prepare.assert_called_once_with('combined.jsonl', 'data/processed/news', 1400, 200,
-                                            include_partial=True, dry_run=True)
+            prepare.assert_called_once()
+            self.assertEqual(prepare.call_args.args[1:], ('combined.jsonl', 'data/processed/news', 1400, 200))
+            self.assertEqual(prepare.call_args.kwargs, dict(include_partial=True, dry_run=True))
 
     def test_explicit_formats_and_ambiguous_directory(self):
-        from ingestion.__main__ import news_format
+        from ingestion.interfaces.cli import news_format
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             self.assertEqual(news_format(root,'snapshot'),'snapshot')
@@ -176,9 +181,10 @@ class TaggingTests(unittest.TestCase):
             prepare_news(root / 'news.json', root / 'prepared', include_partial=True)
             write_json(root / 'tagged/pdf/manifest.json', {'unchanged': True})
             pdf_manifest = (root / 'tagged/pdf/manifest.json').read_bytes()
-            with patch('ingestion.tagging.SemanticSector', side_effect=AssertionError('No real embeddings')):
+            with patch('ingestion.interfaces.composition.SemanticSector', side_effect=AssertionError('No real embeddings')):
                 report = tag_artifacts(None, root / 'prepared', root / 'tagged', companies,
-                                       tagger=Tagger(v, FixedSector()), cache_dir=root / 'cache')
+                                       tagger=Tagger(v, FixedSector(), tagging_source_digests()),
+                                       cache_dir=root / 'cache')
             self.assertNotIn('pdf_documents', report['counts'])
             self.assertEqual(report['counts']['news_documents'], 2)
             self.assertEqual((root / 'tagged/pdf/manifest.json').read_bytes(), pdf_manifest)
@@ -192,7 +198,7 @@ class TaggingTests(unittest.TestCase):
     def test_chunk_factors_and_canonical_geography(self):
         with tempfile.TemporaryDirectory() as tmp:
             v, _ = vocabulary(Path(tmp))
-            tagger = Tagger(v, FixedSector())
+            tagger = Tagger(v, FixedSector(), tagging_source_digests())
             first, second, third = tagger.classify([
                 'ЦБ сохранил ключевую ставку. В Китае и США растет спрос на нефть. В Московской области строят жилье.',
                 'Российские компании работают в Башкирии и Татарстане. Развитие рынка.',
@@ -252,7 +258,7 @@ class TaggingTests(unittest.TestCase):
             raw_doc = json.loads(artifact_paths(root / 'news')[0].read_text(encoding='utf-8'))
             pdf_doc = dict(raw_doc, source_type='pdf', source_file='test.pdf')
             write_json(root / 'pdf/test.pdf.json', pdf_doc)
-            tagger = Tagger(v, FixedSector())
+            tagger = Tagger(v, FixedSector(), tagging_source_digests())
             result = tag_artifacts(root / 'pdf', root / 'news', root / 'tagged', companies,
                                    tagger=tagger, cache_dir=root / 'cache')
             doc = json.loads(artifact_paths(root / 'tagged/news')[0].read_text(encoding='utf-8'))

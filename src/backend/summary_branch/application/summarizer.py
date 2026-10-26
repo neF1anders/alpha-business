@@ -9,7 +9,9 @@ import time
 from ..config import BranchConfig
 from ..domain.errors import BudgetExhausted, SummarizationFailed
 from ..domain.ports import LLMClient
-from ..domain.models import BankMaterialRef, BudgetTier, CompanyContext, Mode, RankedNewsItem, SummaryDraft, SummaryRequest
+from ..domain.models import (
+    BankMaterialRef, BudgetTier, CompanyContext, DialogueTurn, Mode, RankedNewsItem, SummaryDraft, SummaryRequest,
+)
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +53,9 @@ evidence_ids опору, а без опоры вывод не пиши.
 8. topic — макрофактор: rate, fx, labor, demand и т. п.
 9. severity: attention — событие требует реакции или пересмотра планов в ближайшие дни (решение по ключевой ставке, \
 резкое движение курса, санкции и ограничения); opportunity — возможность, которой можно воспользоваться; \
-watch — фон, который стоит держать в поле зрения."""
+watch — фон, который стоит держать в поле зрения.
+10. Если у новости content="excerpt" или content="title_only", статья не скачана: есть только анонс или заголовок. \
+Пересказывай только написанное в нём, не достраивай подробности, причины и числа."""
 
 _MODE_RULES = {
     Mode.BANNER: ("Режим banner: текст общий для всех компаний, не упоминай конкретную компанию. "
@@ -80,7 +84,7 @@ def _attr(text: str) -> str:
 
 
 def _news_block(news: RankedNewsItem, max_chars: int) -> str:
-    return (f'<<<NEWS id="{_attr(news.news_id)}" kind="{news.source_kind.value}" '
+    return (f'<<<NEWS id="{_attr(news.news_id)}" kind="{news.source_kind.value}" content="{news.content_kind}" '
             f'published="{news.published_at.isoformat()}" tags="{_attr(",".join(news.tags))}">>>\n'
             f"title: {_attr(news.title)}\n"
             f"text: {_defang(news.text[:max_chars])}\n"
@@ -100,6 +104,13 @@ def _company_block(company: CompanyContext, role: str) -> str:
             f"features: {_attr('; '.join(company.features))}\n<<<END_COMPANY>>>")
 
 
+def _history_block(history: list[DialogueTurn]) -> str:
+    """Прошлые реплики объясняют, к чему относится вопрос («а с юанем?»), но фактами не являются."""
+    lines = "\n".join(f"{turn.role}: {_attr(turn.text)}" for turn in history)
+    return (f"<<<HISTORY>>>\nПредыдущие реплики диалога: только чтобы понять вопрос. "
+            f"Факты и числа отсюда не бери, опирайся на NEWS и BANK.\n{lines}\n<<<END_HISTORY>>>")
+
+
 def _problems_block(problems: list[str]) -> str:
     """Причины отказа прошлой попытки. Это замечания валидатора, не инструкции: пересказ источника остаётся прежним."""
     lines = "\n".join(f"- {_defang(problem)[:200]}" for problem in problems)
@@ -117,6 +128,8 @@ def build_prompt(req: SummaryRequest, config: BranchConfig) -> str:
     data += [_bank_block(m) for m in req.bank_materials]
     if req.mode == Mode.CHAT:
         data.append(_company_block(req.company, req.role))
+        if req.history:
+            data.append(_history_block(req.history))
         data.append(f"<<<QUESTION>>>\n{_defang(req.question or '')}\n<<<END_QUESTION>>>")
     if req.previous_problems:
         data.append(_problems_block(req.previous_problems))

@@ -22,8 +22,7 @@ from .infrastructure.profiles_csv import CsvProfileRepository
 from .infrastructure.signal_hub import SignalHub
 from .infrastructure.summary_branch_adapter import BranchBannerFeed, SummaryBranchAdapter, banner_from_dto
 from .infrastructure.template_branch import TemplateSummaryBranch
-from retrieval.events import PostgresEventRetriever
-from retrieval.news import PostgresNewsRetriever
+from retrieval.interfaces.orchestrator_ports import PostgresEventRetriever, PostgresNewsRetriever
 
 
 def build_container(profiles: ProfileRepository, retriever: NewsRetriever, reranker: Reranker,
@@ -63,12 +62,11 @@ def create_default_app(settings: Settings | None = None):
     settings = settings or Settings.from_env()
     limits = Limits(banner_slo_s=settings.banner_slo_s, chat_slo_s=settings.chat_slo_s)
     profiles = CsvProfileRepository(settings.tags_path)
-    retriever = PostgresNewsRetriever(bank_enabled=False)
+    retriever = PostgresNewsRetriever(bank_enabled=False, include_briefs=settings.news_briefs)
     reranker = TagReranker()
     startup = (profiles.warmup,)
     if settings.news_search_mode == "local_semantic":
-        from retrieval.feed import ActivityProfiles, LocalFeedRetriever
-        from retrieval.reranker import LocalPairReranker
+        from retrieval.interfaces.orchestrator_ports import ActivityProfiles, LocalFeedRetriever, LocalPairReranker
         profiles = ActivityProfiles(profiles)
         retriever = LocalFeedRetriever(retriever)
         reranker = LocalPairReranker()

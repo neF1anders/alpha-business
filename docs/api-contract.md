@@ -15,7 +15,7 @@
 | `POST /signals/{banner_id}/seen` | баннер просмотрен | `204` |
 | `POST /signals/{banner_id}/suppress` | «Не про меня», тело `{reason}` | `204` |
 | `POST /signals/{banner_id}/dismiss` | «Скрыть баннер» без негативной обратной связи | `204` |
-| `POST /chat` | вопрос, тело `{question, banner_id?}` | `ChatAnswer` |
+| `POST /chat` | вопрос, тело `{question, banner_id?, history?}` | `ChatAnswer` |
 
 ## BannerDTO
 
@@ -31,11 +31,13 @@
   "caveat": false,
   "raw_news": false,
   "placements": ["payments", "new_payment"],
-  "sources": [{"kind": "primary | bank | media", "title": "…", "url": "https://…", "ref_id": "news_id | doc_id"}],
+  "sources": [{"kind": "primary | bank | media", "title": "…", "url": "https://…", "ref_id": "news_id | doc_id",
+               "content_kind": "full_text | excerpt | title_only"}],
   "expires_at": "2026-10-26T12:00:00Z"
 }
 ```
 
+- `content_kind`: `excerpt` или `title_only` — статья не скачана, источник — только анонс или заголовок. Фронт подписывает источник «анонс» / «только заголовок».
 - `raw_news=true`: низкая уверенность или новость не успела к сроку. Тогда `headline` — заголовок новости, а `for_you` пустой.
 - Баннер «только новость», не успевший к сроку, приходит с `banner_id = raw-<cluster_id>`. Когда ветка доводит его, по SSE приходит `invalidate ["raw-<cluster_id>"]`, затем `banners [готовый]`.
 - `placements` — страницы действий, где путь влияния уместен как плашка: поставщики → `payments` и `new_payment`, покупатели → `payments` и `counterparties`.
@@ -75,6 +77,13 @@ data: ["raw-<cluster_id>", …]
 `evidence.ref_id` совпадает с `sources[].ref_id`: так фронт связывает утверждение с источником.
 
 Если в запросе есть `banner_id` («Подробнее» из баннера), поиск идёт по заголовку новости этого баннера.
+
+`history` — предыдущие реплики диалога, старые первыми: `[{"role": "user" | "assistant", "text": "…"}]`.
+Сервер берёт последние 4 реплики, каждую до 600 символов. Модель видит их как контекст вопроса,
+а не как источник: утверждения ответа по-прежнему опираются только на новости и материалы банка.
+Короткий уточняющий вопрос (до 4 слов, например «А к юаню?») ищется вместе с прошлым вопросом пользователя.
+Поиск в чате сопоставляет леммы вопроса: нужна половина значимых слов (для вопроса из 1–2 слов — все),
+совпадения в заголовке весят больше, чем в тексте.
 
 ## Ошибки
 

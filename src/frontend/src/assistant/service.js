@@ -12,6 +12,9 @@ export const INITIAL_ASSISTANT_STATE = {
 };
 
 const DISCUSS_QUESTION = "Расскажите подробнее, что это значит для меня";
+/** Two question-answer pairs; the backend keeps the same window and trims longer turns. */
+const HISTORY_TURNS = 4;
+const HISTORY_TURN_CHARS = 600;
 
 export function createAssistantService({ api, store }) {
   const seenIds = new Set();
@@ -98,11 +101,26 @@ export function createAssistantService({ api, store }) {
     }
   }
 
+  /** Last turns of the dialogue, so a short follow-up ("а к юаню?") keeps its topic. */
+  function recentHistory(messages) {
+    return messages
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .slice(-HISTORY_TURNS)
+      .map((message) =>
+        message.role === "user"
+          ? { role: "user", text: message.text }
+          : { role: "assistant", text: message.answer.claims.map((claim) => claim.text).join(" ") },
+      )
+      .filter((turn) => turn.text)
+      .map((turn) => ({ ...turn, text: turn.text.slice(0, HISTORY_TURN_CHARS) }));
+  }
+
   function ask(question, { bannerId, displayText } = {}) {
     const text = question.trim();
     if (!text || store.get().chat.pending) return;
+    const history = recentHistory(store.get().chat.messages);
     addMessage({ role: "user", text: displayText ?? text });
-    requestAnswer({ question: text, bannerId });
+    requestAnswer({ question: text, bannerId, history });
   }
 
   return {

@@ -10,9 +10,10 @@ from unittest.mock import patch
 import psycopg
 from psycopg import sql
 
-from ingestion import database
-from ingestion.news_database import load_collector_jsonl, load_news, read_collector_jsonl, read_snapshot
-from ingestion.news_data import digest
+from tests.ingestion_support import database
+from ingestion.application.load_news_snapshot import read_collector_briefs, read_collector_jsonl, read_snapshot
+from tests.ingestion_support import load_collector_jsonl, load_news_snapshot as load_news
+from ingestion.domain.news_urls import digest
 
 
 def article(number, text=None):
@@ -50,7 +51,20 @@ def headline(number):
                 content_status='metadata_only', quality_flags=['title_only'])
 
 
+def excerpt(number, text='Поставки зерна в Китай выросли.'):
+    return dict(headline(number), text=text, content_status='short_excerpt',
+                quality_flags=['short_excerpt_not_full_article'])
+
+
 class CollectorJsonlTests(unittest.TestCase):
+    def test_briefs_keep_kind_and_skip_full_articles_and_duplicates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows=[article(1),headline(2),excerpt(3),dict(excerpt(4),duplicate_of='news:x')]
+            _,_,briefs,report=read_collector_briefs(collector_file(Path(tmp)/'news_combined.jsonl',rows))
+            self.assertEqual(report['briefs'],2)
+            kinds={row[0]:row[4] for row in briefs}
+            self.assertEqual(kinds,{headline(2)['news_id']:'title_only',excerpt(3)['news_id']:'excerpt'})
+
     def test_only_full_articles_are_read_and_import_is_unverified(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=collector_file(Path(tmp)/'news_combined.jsonl',[article(1),headline(2),article(3)])
@@ -90,7 +104,7 @@ class DisposableDatabase(unittest.TestCase):
         cls.admin=psycopg.connect(os.environ.get('DATABASE_URL',''),autocommit=True)
         cls.name='insights_news_test_'+uuid.uuid4().hex
         cls.admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(cls.name)))
-        cls.connection_patch=patch('ingestion.database.connect',
+        cls.connection_patch=patch('ingestion.infrastructure.postgres.connect',
             side_effect=lambda:psycopg.connect(cls.admin.info.dsn,dbname=cls.name))
         cls.connection_patch.start()
         database.initialize();database.initialize()
@@ -147,6 +161,21 @@ class CollectorJsonlDatabaseTests(DisposableDatabase):
                 receipt=c.execute('SELECT raw_receipt FROM insights.news_articles WHERE news_id=%s',
                                   (article(13)['news_id'],)).fetchone()[0]
                 self.assertEqual(receipt,dict(kind='collector_jsonl',verified=False,source_file='news_combined.jsonl'))
+
+    def test_partial_import_adds_briefs_once_and_never_shadows_an_article(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # The headline of article 20 also arrives as a brief: the full text must stay the only copy.
+            shadow=dict(headline(20),news_id=article(20)['news_id'])
+            path=collector_file(Path(tmp)/'news_combined.jsonl',[article(20),headline(21),excerpt(22)])
+            first=load_collector_jsonl(path,include_partial=True)
+            self.assertEqual((first['added'],first['briefs']['added']),(1,2))
+            again=load_collector_jsonl(path,include_partial=True)
+            self.assertEqual(again['briefs']['status'],'unchanged')
+            other=collector_file(Path(tmp)/'later.jsonl',[article(23),dict(shadow,url='https://www.kommersant.ru/doc/20')])
+            self.assertEqual(load_collector_jsonl(other,include_partial=True)['briefs']['added'],0)
+            with database.connect() as c:
+                rows=c.execute('SELECT content_kind,excerpt FROM insights.news_briefs ORDER BY news_id').fetchall()
+            self.assertEqual(sorted(k for k,_ in rows),['excerpt','title_only'])
 
 
 if __name__=='__main__':unittest.main()

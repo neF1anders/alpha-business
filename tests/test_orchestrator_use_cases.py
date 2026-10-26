@@ -35,6 +35,17 @@ class BannersTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(len(q.news) == 1 for q in branch.requests))
         self.assertEqual([s.name for s in result.steps], ["profile", "retrieve", "rerank", "summary_branch"])
 
+    async def test_one_banner_per_event_with_its_other_articles(self):
+        decision = news(1, {"factor:key_rate"}, cluster="event:policy_rate:2026-10-23", score=0.9)
+        statement = replace(news(4, {"factor:key_rate"}, cluster="event:policy_rate:2026-10-23", score=0.4),
+                            title="Заявление по итогам заседания")
+        branch = FakeBranch()
+        retriever = FakeRetriever(fresh([decision, statement, news(2, {"sector:trade"})]), BANK)
+        result = await build(GetBanners, retriever=retriever, branch=branch).execute(BannersCommand("U_1"))
+        self.assertEqual(len(result.banners), 2)
+        event = next(q for q in branch.requests if q.news[0].item.cluster_id.startswith("event:"))
+        self.assertEqual([r.item.news_id for r in event.news], ["n1", "n4"])   # выбранная статья первой
+
     async def test_retriever_gets_only_matchable_tags(self):
         retriever = FakeRetriever(fresh(NEWS))
         await build(GetBanners, retriever=retriever).execute(BannersCommand("U_1"))

@@ -3,7 +3,8 @@
  *
  * @typedef {"attention" | "watch" | "opportunity"} Severity
  * @typedef {"primary" | "bank" | "media"} SourceKind
- * @typedef {{kind: SourceKind, title: string, url: string, ref_id?: string}} SourceRef
+ * @typedef {"full_text" | "excerpt" | "title_only"} ContentKind
+ * @typedef {{kind: SourceKind, title: string, url: string, ref_id?: string, content_kind?: ContentKind}} SourceRef
  *
  * @typedef {object} BannerDTO
  * @property {string} banner_id
@@ -71,4 +72,12 @@ export function countBySeverity(items) {
 export function inlineTextOf(banner) {
   if (banner.inline_text) return banner.inline_text;
   return [banner.headline, banner.for_you].filter(Boolean).join(". ");
+}
+
+/** The article was not fetched: the source is only its excerpt or headline, and the client must see that. */
+export const BRIEF_LABELS = { excerpt: "анонс", title_only: "только заголовок" };
+
+/** @param {SourceRef} source */
+export function briefLabel(source) {
+  return BRIEF_LABELS[source?.content_kind] ?? null;
 }

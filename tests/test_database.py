@@ -12,10 +12,11 @@ from unittest.mock import patch
 import psycopg
 from psycopg import sql
 
-from ingestion import database
-from ingestion.common import write_json, sha256
-from ingestion.news_documents import prepare_news, artifact_paths
-from ingestion.csv_data import COMPANY_COLUMNS, LINK_COLUMNS, PAYMENT_COLUMNS, SOURCES, prepare_csv
+from tests.ingestion_support import database
+from tests.ingestion_support import write_json, sha256
+from tests.ingestion_support import prepare_news, artifact_paths
+from ingestion.domain.csv_rules import COMPANY_COLUMNS, LINK_COLUMNS, PAYMENT_COLUMNS, SOURCES
+from tests.ingestion_support import prepare_csv
 
 
 @unittest.skipUnless(os.environ.get('RUN_DB_TESTS') == '1', 'PostgreSQL integration: set RUN_DB_TESTS=1')
@@ -31,7 +32,7 @@ class DatabaseTests(unittest.TestCase):
                 conn.close()
                 raise AssertionError('Refusing to run tests outside the temporary database')
             return conn
-        cls.connection_patch = patch('ingestion.database.connect', side_effect=test_connect)
+        cls.connection_patch = patch('ingestion.infrastructure.postgres.connect', side_effect=test_connect)
         cls.connection_patch.start()
         # Start from the original schema, including its existing view and a populated PDF.
         legacy = database.SCHEMA.read_text(encoding='utf-8').split('-- Additive migration:')[0]

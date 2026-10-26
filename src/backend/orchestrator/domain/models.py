@@ -1,10 +1,11 @@
 """Сущности оркестратора. Без внешних зависимостей: только стандартная библиотека."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 
 def utcnow() -> datetime:
@@ -20,6 +21,31 @@ class BudgetTier(str, Enum):
     FULL = "full"
     LITE = "lite"
     CACHED_ONLY = "cached_only"
+
+
+@dataclass(frozen=True)
+class ChatTurn:
+    """Реплика предыдущего диалога: контекст вопроса, а не источник фактов."""
+    role: Literal["user", "assistant"]
+    text: str
+
+
+CHAT_HISTORY_TURNS = 4            # две пары «вопрос — ответ»
+CHAT_TURN_MAX_CHARS = 600
+_FOLLOW_UP_MAX_WORDS = 4
+_CONTENT_WORD = re.compile(r"\w{3,}", re.UNICODE)
+
+
+def recent_history(history: tuple[ChatTurn, ...]) -> tuple[ChatTurn, ...]:
+    return tuple(ChatTurn(t.role, t.text[:CHAT_TURN_MAX_CHARS]) for t in history[-CHAT_HISTORY_TURNS:])
+
+
+def follow_up_search_text(question: str, history: tuple[ChatTurn, ...]) -> Optional[str]:
+    """Короткое уточнение («а с юанем?») само ничего не найдёт: ищем вместе с прошлым вопросом пользователя."""
+    if len(_CONTENT_WORD.findall(question)) > _FOLLOW_UP_MAX_WORDS:
+        return None
+    previous = next((t.text for t in reversed(history) if t.role == "user"), None)
+    return f"{previous} {question}" if previous else None
 
 
 class SourceKind(str, Enum):
@@ -84,6 +110,7 @@ class NewsItem:
     primary_url: Optional[str] = None
     tags: frozenset[str] = frozenset()
     retrieval_score: float = 0.0                     # оценка retriever, 0..1
+    content_kind: str = "full_text"                  # full_text | excerpt | title_only: полнота материала
 
 
 @dataclass(frozen=True)
@@ -141,6 +168,7 @@ class SourceRef:
     title: str
     url: str
     ref_id: str = ""                                 # news_id или doc_id: связь утверждения чата с источником
+    content_kind: str = "full_text"                  # клиенту показывается, что источник — анонс или заголовок
 
 
 @dataclass(frozen=True)
@@ -191,6 +219,7 @@ class SummaryRequest:
     question: Optional[str] = None
     budget: BudgetTier = BudgetTier.FULL
     dossier: Optional[CompanyDossier] = None
+    history: tuple[ChatTurn, ...] = ()
 
 
 @dataclass(frozen=True)
