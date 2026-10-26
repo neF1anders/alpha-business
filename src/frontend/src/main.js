@@ -12,26 +12,32 @@ import { createShell } from "./ui/shell.js";
 import { createRouter } from "./ui/router.js";
 import { createDemoPanel } from "./ui/demo-panel.js";
 import { append } from "./ui/dom.js";
+import { LOGIN_PAGE, withPassthroughParams } from "./auth/context.js";
 
 function createApi() {
   if (config.apiMode === "http") return { api: createHttpClient(config), demo: null };
-  return createMockClient();
+  return createMockClient({ role: config.role });
 }
 
-const { api, demo } = createApi();
-const store = createStore(INITIAL_ASSISTANT_STATE);
-const service = createAssistantService({ api, store });
+function start() {
+  const { api, demo } = createApi();
+  const store = createStore(INITIAL_ASSISTANT_STATE);
+  const service = createAssistantService({ api, store });
 
-const shell = createShell();
-const router = createRouter({ shell, deps: { store, service } });
+  const shell = createShell();
+  const router = createRouter({ shell, deps: { store, service } });
 
-append(document.getElementById("app"), [
-  shell.element,
-  createAssistantRail({ store, service }),
-  createAssistantDrawer({ store, service }),
-  demo && createDemoPanel({ demo, service, router }),
-]);
+  append(document.getElementById("app"), [
+    shell.element,
+    createAssistantRail({ store, service }),
+    createAssistantDrawer({ store, service }),
+    demo && createDemoPanel({ demo, service, router }),
+  ]);
 
-router.start();
-service.loadSignals();
-service.connectStream();
+  router.start();
+  service.loadSignals();
+  service.connectStream();
+}
+
+if (config.requiresLogin) window.location.replace(withPassthroughParams(LOGIN_PAGE));
+else start();

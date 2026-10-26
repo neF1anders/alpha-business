@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import AsyncIterator, Literal, Optional
 
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
@@ -22,13 +22,15 @@ from ..application.use_cases import (
     AnswerChat, BannersCommand, ChatCommand, GetInlineSignal, GetSignals, SignalFeedback,
 )
 from ..domain.errors import CompanyNotFound, DependencyUnavailable
-from ..domain.models import Banner, ChatAnswer, SignalEvent, SourceRef
+from ..domain.models import Banner, ChatAnswer, Role, SignalEvent, SourceRef, audience_id
 
 log = logging.getLogger("orchestrator.api.client")
 
 PREFIX = "/api/companies/{company_id}"
 HEARTBEAT_S = 15.0
 DEMO_ALIAS = "demo-company"                          # id по умолчанию во фронте (src/frontend/src/config.js)
+# Роль сотрудника из демо-входа. Query, а не заголовок: EventSource (SSE) заголовки не передаёт.
+RoleQuery = Query(default=None, description="должность смотрящего; меняет акценты и кэш выдачи")
 
 
 @dataclass(frozen=True)
@@ -124,44 +126,48 @@ def register_client_api(app: FastAPI, services: ClientServices) -> None:
             raise ClientError(422, "invalid_request", "некорректный company_id")
         return company_id
 
+    def audience(company_id: str, role: Optional[Role]) -> str:
+        return audience_id(company(company_id), _role(role))
+
     @router.get("/signals", response_model=SignalsOut)
-    async def signals(company_id: str, request: Request):
+    async def signals(company_id: str, request: Request, role: Optional[Role] = RoleQuery):
         try:
-            result = await services.get_signals.execute(BannersCommand(company(company_id)))
+            result = await services.get_signals.execute(BannersCommand(company(company_id), _role(role)))
         except CompanyNotFound as exc:
             raise ClientError(404, "company_not_found", str(exc)) from exc
         base = _base(request)
         return SignalsOut(counts=result.counts(), items=[banner_out(b, base) for b in result.items])
 
     @router.get("/signals/inline", response_model=InlineOut)
-    async def inline(company_id: str, page: InlinePage, request: Request):
-        banner = await services.inline.execute(company(company_id), page)
+    async def inline(company_id: str, page: InlinePage, request: Request, role: Optional[Role] = RoleQuery):
+        banner = await services.inline.execute(audience(company_id, role), page)
         return InlineOut(item=banner_out(banner, _base(request)) if banner else None)
 
     @router.get("/signals/stream")
-    async def stream(company_id: str, request: Request):
-        subscription = services.stream.subscribe(company(company_id))
+    async def stream(company_id: str, request: Request, role: Optional[Role] = RoleQuery):
+        subscription = services.stream.subscribe(audience(company_id, role))
         return StreamingResponse(_sse(subscription, request, _base(request)), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @router.post("/signals/{banner_id}/seen", status_code=204)
-    async def seen(company_id: str, banner_id: str):
-        await services.feedback.seen(company(company_id), banner_id)
+    async def seen(company_id: str, banner_id: str, role: Optional[Role] = RoleQuery):
+        await services.feedback.seen(audience(company_id, role), banner_id)
         return Response(status_code=204)
 
     @router.post("/signals/{banner_id}/suppress", status_code=204)
-    async def suppress(company_id: str, banner_id: str, body: Optional[SuppressIn] = None):
-        await services.feedback.not_relevant(company(company_id), banner_id, (body or SuppressIn()).reason)
+    async def suppress(company_id: str, banner_id: str, body: Optional[SuppressIn] = None,
+                       role: Optional[Role] = RoleQuery):
+        await services.feedback.not_relevant(audience(company_id, role), banner_id, (body or SuppressIn()).reason)
         return Response(status_code=204)
 
     @router.post("/signals/{banner_id}/dismiss", status_code=204)
-    async def dismiss(company_id: str, banner_id: str):
-        await services.feedback.dismiss(company(company_id), banner_id)
+    async def dismiss(company_id: str, banner_id: str, role: Optional[Role] = RoleQuery):
+        await services.feedback.dismiss(audience(company_id, role), banner_id)
         return Response(status_code=204)
 
     @router.post("/chat", response_model=ChatAnswerOut)
-    async def chat(company_id: str, body: ChatIn, request: Request):
-        cmd = ChatCommand(company(company_id), body.question, banner_id=body.banner_id)
+    async def chat(company_id: str, body: ChatIn, request: Request, role: Optional[Role] = RoleQuery):
+        cmd = ChatCommand(company(company_id), body.question, _role(role), banner_id=body.banner_id)
         try:
             result = await services.answer_chat.execute(cmd)
         except CompanyNotFound as exc:
@@ -192,6 +198,10 @@ def _register_errors(app: FastAPI) -> None:
 
 
 # --------------------------------------------------------------------------- сериализация
+def _role(role: Optional[Role]) -> Optional[str]:
+    return role.value if role else None
+
+
 def _base(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 

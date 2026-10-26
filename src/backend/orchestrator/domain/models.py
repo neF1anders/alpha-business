@@ -1,7 +1,7 @@
 """Сущности оркестратора. Без внешних зависимостей: только стандартная библиотека."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Optional
@@ -28,6 +28,22 @@ class SourceKind(str, Enum):
     MEDIA = "media"
 
 
+class Role(str, Enum):
+    """Должность того, кто смотрит выдачу компании: от неё зависят акценты баннеров и текст «для вас»."""
+    OWNER = "owner"
+    CEO = "ceo"
+    CFO = "cfo"
+    TREASURER = "treasurer"
+    CHIEF_ACCOUNTANT = "chief_accountant"
+    PROCUREMENT = "procurement"
+    SALES = "sales"
+
+
+def audience_id(company_id: str, role: Optional[str]) -> str:
+    """Ключ выдачи: баннеры, реакции и стрим делятся по паре компания × роль; без роли — по компании."""
+    return f"{company_id}~{role}" if role else company_id
+
+
 class Severity(str, Enum):
     ATTENTION = "attention"
     WATCH = "watch"
@@ -43,9 +59,14 @@ class CompanyProfile:
     features: tuple[str, ...] = ()                   # человекочитаемые признаки для строки «для вас»
     role: str = "cfo"
     activity: str = ""                             # confirmed source mainokved_name
+    audience: str = ""                               # ключ выдачи, см. audience_id; пусто — выдача компании
+
+    @property
+    def audience_id(self) -> str:
+        return self.audience or self.company_id
 
     def with_role(self, role: str) -> "CompanyProfile":
-        return CompanyProfile(self.company_id, self.segment_id, self.tags, self.features, role, self.activity)
+        return replace(self, role=role, audience=audience_id(self.company_id, role))
 
     def tags_in(self, *namespaces: str) -> frozenset[str]:
         return frozenset(t for t in self.tags if t.split(":", 1)[0] in namespaces)

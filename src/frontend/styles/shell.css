@@ -161,3 +161,102 @@
 .page.enter {
   animation-duration: var(--dur-slow);
 }
+
+/* ---------- user menu (demo account switcher) ---------- */
+.user-menu {
+  position: relative;
+}
+
+.user-menu__trigger {
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  max-width: 220px;
+  min-height: 34px;
+  padding: 3px 16px;
+  border: 0;
+  border-radius: 17px;
+  background: var(--text-primary);
+  color: var(--text-inverse);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-menu__name {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.user-menu__title {
+  font-size: 9px;
+  opacity: 0.65;
+}
+
+.user-menu__name,
+.user-menu__title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  width: 300px;
+  padding: 8px;
+  border: 1px solid var(--line-default);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 14%);
+}
+
+.user-menu__panel[hidden] {
+  display: none;
+}
+
+.user-menu__label {
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.user-menu__item {
+  display: grid;
+  width: 100%;
+  gap: 1px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-menu__item:hover {
+  background: var(--bg-chip);
+}
+
+.user-menu__item.is-active {
+  background: var(--bg-muted);
+  font-weight: 600;
+}
+
+.user-menu__hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.user-menu__item--exit {
+  margin-top: 6px;
+  border-top: 1px solid var(--line-default);
+  border-radius: 0 0 8px 8px;
+  color: var(--brand-red);
+}

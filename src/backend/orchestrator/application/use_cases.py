@@ -16,7 +16,7 @@ from typing import Awaitable, Callable, Optional, TypeVar
 from ..domain.errors import CompanyNotFound, DependencyUnavailable
 from ..domain.models import (
     Banner, BankMaterial, BudgetTier, ChatAnswer, Claim, CompanyDossier, CompanyProfile, Mode, NewsQuery, RankedNews,
-    Severity, SourceRef, SummaryRequest, TraceStep, raw_banner_id, utcnow,
+    Severity, SourceRef, SummaryRequest, TraceStep, audience_id, raw_banner_id, utcnow,
 )
 from ..domain.profile_rules import counterparty_search_tags
 from .ports import (
@@ -276,14 +276,15 @@ class GetSignals:
 
     async def execute(self, cmd: BannersCommand) -> SignalsResult:
         session = await self._get_banners.execute(cmd)
-        stored = await self._feed.live(cmd.company_id, self._limits.signals_limit)
+        audience = audience_id(cmd.company_id, cmd.role)
+        stored = await self._feed.live(audience, self._limits.signals_limit)
         ready_clusters = {b.cluster_id for b in (*session.banners, *stored) if not b.raw_news and b.cluster_id}
         items: dict[str, Banner] = {}
         for banner in (*session.banners, *stored):
             if banner.raw_news and banner.cluster_id in ready_clusters:
                 continue                                 # готовый баннер кластера уже есть: «только новость» не нужна
             items.setdefault(banner.banner_id, banner)
-        hidden = await self._feed.hidden_count(cmd.company_id)
+        hidden = await self._feed.hidden_count(audience)
         return SignalsResult(session.trace_id, tuple(items.values())[: self._limits.signals_limit], hidden,
                              session.degraded)
 
@@ -294,8 +295,8 @@ class GetInlineSignal:
     def __init__(self, feed: BannerFeed, limits: Limits) -> None:
         self._feed, self._limits = feed, limits
 
-    async def execute(self, company_id: str, page: str) -> Optional[Banner]:
-        for banner in await self._feed.live(company_id, self._limits.signals_limit):
+    async def execute(self, audience: str, page: str) -> Optional[Banner]:
+        for banner in await self._feed.live(audience, self._limits.signals_limit):
             if (page in banner.placements and banner.severity in INLINE_SEVERITIES
                     and not banner.caveat and not banner.raw_news):
                 return banner
@@ -303,19 +304,22 @@ class GetInlineSignal:
 
 
 class SignalFeedback:
-    """Реакции клиента на баннер: просмотр, «не про меня», «скрыть»."""
+    """Реакции клиента на баннер: просмотр, «не про меня», «скрыть».
+
+    `audience` — ключ выдачи (audience_id): реакции относятся к паре компания × роль.
+    """
 
     def __init__(self, feed: BannerFeed) -> None:
         self._feed = feed
 
-    async def seen(self, company_id: str, banner_id: str) -> None:
-        await self._feed.mark_seen(company_id, banner_id)
+    async def seen(self, audience: str, banner_id: str) -> None:
+        await self._feed.mark_seen(audience, banner_id)
 
-    async def not_relevant(self, company_id: str, banner_id: str, reason: str) -> None:
-        await self._feed.suppress(company_id, banner_id, reason)
+    async def not_relevant(self, audience: str, banner_id: str, reason: str) -> None:
+        await self._feed.suppress(audience, banner_id, reason)
 
-    async def dismiss(self, company_id: str, banner_id: str) -> None:
-        await self._feed.hide(company_id, banner_id)
+    async def dismiss(self, audience: str, banner_id: str) -> None:
+        await self._feed.hide(audience, banner_id)
 
 
 class AnswerChat(_Pipeline):
@@ -354,7 +358,7 @@ class AnswerChat(_Pipeline):
         а личный заголовок баннера и слова вопроса только мешают полнотекстовому поиску."""
         if not cmd.banner_id or self._feed is None:
             return None
-        banner = await self._feed.get(cmd.company_id, cmd.banner_id)
+        banner = await self._feed.get(audience_id(cmd.company_id, cmd.role), cmd.banner_id)
         if banner is None:
             return None
         return banner.sources[0].title if banner.sources else banner.headline

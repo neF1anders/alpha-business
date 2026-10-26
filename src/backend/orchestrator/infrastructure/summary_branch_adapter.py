@@ -82,7 +82,8 @@ def to_branch_request(req: SummaryRequest) -> branch.SummaryRequest:
 
 def to_company_context(profile: CompanyProfile, dossier: Optional[CompanyDossier]) -> branch.CompanyContext:
     return branch.CompanyContext(
-        company_id=profile.company_id, segment_id=profile.segment_id, role=profile.role,
+        # ветка хранит и рассылает баннеры по company_id: ключ выдачи разводит роли одной компании
+        company_id=profile.audience_id, segment_id=profile.segment_id, role=profile.role,
         tags=sorted(profile.tags), features=list(profile.features),
         profile=_profile_from_dossier(dossier) if dossier else _profile_from_tags(profile))
 
