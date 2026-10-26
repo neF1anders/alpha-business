@@ -195,6 +195,7 @@ class SummaryRequest(BaseModel):
     news: list[RankedNewsItem] = Field(min_length=1)  # 3) батч новостей от реранкера, по убыванию rerank_score
     bank_materials: list[BankMaterialRef] = Field(default_factory=list)
     budget: BudgetTier = BudgetTier.FULL
+    previous_problems: list[str] = Field(default_factory=list)   # причины отказа прошлой попытки, только для повтора
 
     @property
     def role(self) -> str:
@@ -314,6 +315,10 @@ class ContentSignals(BaseModel):
     claim_mix: float = Field(ge=0, le=1)
     numeric_miss: bool = False
     unsupported_claim: bool = False                  # проверяемое утверждение почти не опирается на слова источника
+    direction_miss: bool = False                     # «повысил» там, где в цитате «снизил»
+    unit_miss: bool = False                          # число из источника, но с другим масштабом или единицей
+    entity_miss: bool = False                        # название или тикер, которых нет в источнике
+    ungrounded_inference: bool = False               # вывод (model/hypothesis) без опоры на источник
     # метрика качества саммари SQS (диагностика, в рантайм-решении не участвует)
     faithfulness: float = Field(ge=0, le=1)
     coverage: float = Field(ge=0, le=1)
