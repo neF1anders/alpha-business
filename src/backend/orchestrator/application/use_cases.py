@@ -15,8 +15,9 @@ from typing import Awaitable, Callable, Optional, TypeVar
 
 from ..domain.errors import CompanyNotFound, DependencyUnavailable
 from ..domain.models import (
-    Banner, BankMaterial, BudgetTier, ChatAnswer, Claim, CompanyDossier, CompanyProfile, Mode, NewsQuery, RankedNews,
-    Severity, SourceRef, SummaryRequest, TraceStep, audience_id, raw_banner_id, utcnow,
+    Banner, BankMaterial, BudgetTier, ChatAnswer, ChatTurn, Claim, CompanyDossier, CompanyProfile, Mode, NewsQuery,
+    RankedNews, Severity, SourceRef, SummaryRequest, TraceStep, audience_id, follow_up_search_text, raw_banner_id,
+    recent_history, utcnow,
 )
 from ..domain.profile_rules import counterparty_search_tags
 from .ports import (
@@ -58,6 +59,7 @@ class ChatCommand:
     role: Optional[str] = None
     trace_id: Optional[str] = None
     banner_id: Optional[str] = None                  # вопрос задан из баннера: его тема входит в поиск
+    history: tuple[ChatTurn, ...] = ()               # предыдущие реплики диалога, старые первыми
 
 
 @dataclass(frozen=True)
@@ -208,9 +210,10 @@ class _Pipeline:
         return [task.result() for task in tasks]
 
     def _request(self, trace: Trace, mode: Mode, found: _Found, question: Optional[str],
-                 budget: BudgetTier) -> SummaryRequest:
+                 budget: BudgetTier, history: tuple[ChatTurn, ...] = ()) -> SummaryRequest:
         return SummaryRequest(trace_id=trace.trace_id, mode=mode, company=found.profile, news=tuple(found.ranked),
-                              bank_materials=found.bank, question=question, budget=budget, dossier=found.dossier)
+                              bank_materials=found.bank, question=question, budget=budget, dossier=found.dossier,
+                              history=history)
 
 
 class GetBanners(_Pipeline):
@@ -334,7 +337,8 @@ class AnswerChat(_Pipeline):
         trace = Trace(cmd.trace_id or uuid.uuid4().hex, on_step)
         deadline = Deadline(self._limits.chat_slo_s)
         profile = await self._profile(cmd.company_id, cmd.role, trace)
-        search_text = await self._search_text(cmd)
+        history = recent_history(cmd.history)
+        search_text = await self._search_text(cmd) or follow_up_search_text(cmd.question, history)
         found = await self._find_with_dossier(profile, cmd.question, self._limits.chat_top_k, trace, deadline,
                                               search_text)
         if not found.ranked:
@@ -342,7 +346,7 @@ class AnswerChat(_Pipeline):
             return self._result(trace, self._empty_answer())
 
         budget = BudgetTier.LITE if deadline.remaining() < self._limits.lite_below_s else BudgetTier.FULL
-        req = self._request(trace, Mode.CHAT, found, cmd.question, budget)
+        req = self._request(trace, Mode.CHAT, found, cmd.question, budget, history)
         with trace.step("summary_branch", budget=budget.value) as info:
             try:
                 answer = await self._call("summary_branch", self._branch.chat(req), deadline.remaining())

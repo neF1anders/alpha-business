@@ -48,8 +48,11 @@ export function createHttpClient({ apiBase, companyId, role = null, pollInterval
     suppress: (bannerId, reason = "not_relevant") =>
       request(`/signals/${encodeURIComponent(bannerId)}/suppress`, { method: "POST", body: { reason } }),
     dismiss: (bannerId) => request(`/signals/${encodeURIComponent(bannerId)}/dismiss`, { method: "POST" }),
-    ask: ({ question, bannerId }) =>
-      request("/chat", { method: "POST", body: bannerId ? { question, banner_id: bannerId } : { question } }),
+    ask: ({ question, bannerId, history = [] }) =>
+      request("/chat", {
+        method: "POST",
+        body: { question, ...(bannerId ? { banner_id: bannerId } : {}), ...(history.length ? { history } : {}) },
+      }),
     subscribe: (handlers) => subscribeToStream(`${root}${withRole("/signals/stream")}`, handlers, pollIntervalMs),
   };
 }

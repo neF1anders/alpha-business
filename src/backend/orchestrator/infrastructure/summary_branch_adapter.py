@@ -77,7 +77,8 @@ def to_branch_request(req: SummaryRequest) -> branch.SummaryRequest:
         news=[_news(r) for r in req.news],
         bank_materials=[branch.BankMaterialRef(doc_id=m.doc_id, title=m.title, page=m.page, claim_text=m.claim_text,
                                                url=m.url) for m in req.bank_materials],
-        budget=branch.BudgetTier(req.budget.value))
+        budget=branch.BudgetTier(req.budget.value),
+        history=[branch.DialogueTurn(role=t.role, text=t.text) for t in req.history])
 
 
 def to_company_context(profile: CompanyProfile, dossier: Optional[CompanyDossier]) -> branch.CompanyContext:

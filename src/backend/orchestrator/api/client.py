@@ -22,7 +22,7 @@ from ..application.use_cases import (
     AnswerChat, BannersCommand, ChatCommand, GetInlineSignal, GetSignals, SignalFeedback,
 )
 from ..domain.errors import CompanyNotFound, DependencyUnavailable
-from ..domain.models import Banner, ChatAnswer, Role, SignalEvent, SourceRef, audience_id
+from ..domain.models import Banner, ChatAnswer, ChatTurn, Role, SignalEvent, SourceRef, audience_id
 
 log = logging.getLogger("orchestrator.api.client")
 
@@ -103,9 +103,15 @@ class ChatAnswerOut(BaseModel):
     confidence: float
 
 
+class ChatTurnIn(BaseModel):
+    role: Literal["user", "assistant"]
+    text: str = Field(min_length=1, max_length=4000)
+
+
 class ChatIn(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     banner_id: Optional[str] = Field(default=None, max_length=128)
+    history: list[ChatTurnIn] = Field(default_factory=list, max_length=20)   # сервер берёт последние реплики
 
 
 class SuppressIn(BaseModel):
@@ -167,7 +173,8 @@ def register_client_api(app: FastAPI, services: ClientServices) -> None:
 
     @router.post("/chat", response_model=ChatAnswerOut)
     async def chat(company_id: str, body: ChatIn, request: Request, role: Optional[Role] = RoleQuery):
-        cmd = ChatCommand(company(company_id), body.question, _role(role), banner_id=body.banner_id)
+        cmd = ChatCommand(company(company_id), body.question, _role(role), banner_id=body.banner_id,
+                          history=tuple(ChatTurn(t.role, t.text) for t in body.history))
         try:
             result = await services.answer_chat.execute(cmd)
         except CompanyNotFound as exc:

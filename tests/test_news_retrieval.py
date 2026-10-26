@@ -131,6 +131,14 @@ class NewsRetrievalTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(reply.news,())
         with database.connect() as c:self.assertEqual(c.execute('SELECT count(*) FROM insights.news_articles').fetchone()[0],6)
 
+    async def test_chat_matches_question_lemmas_not_every_word(self):
+        # A natural question rarely repeats an article word for word: half of its terms is enough.
+        r=PostgresNewsRetriever(timeout_s=2)
+        reply=await r.retrieve(NewsQuery(frozenset(),question='Насколько вырос курс юаня к рублю?',as_of=AS_OF))
+        self.assertEqual([n.news_id for n in reply.news],['n6'])
+        reply=await r.retrieve(NewsQuery(frozenset(),question='Какие доходы у марсианских магазинов?',as_of=AS_OF))
+        self.assertEqual(reply.news,())
+
     async def test_unavailable_pdf_is_not_returned_as_a_broken_link(self):
         with tempfile.TemporaryDirectory() as tmp:
             result=await PostgresNewsRetriever(timeout_s=2,reports_root=tmp).retrieve(

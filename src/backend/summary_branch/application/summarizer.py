@@ -9,7 +9,9 @@ import time
 from ..config import BranchConfig
 from ..domain.errors import BudgetExhausted, SummarizationFailed
 from ..domain.ports import LLMClient
-from ..domain.models import BankMaterialRef, BudgetTier, CompanyContext, Mode, RankedNewsItem, SummaryDraft, SummaryRequest
+from ..domain.models import (
+    BankMaterialRef, BudgetTier, CompanyContext, DialogueTurn, Mode, RankedNewsItem, SummaryDraft, SummaryRequest,
+)
 
 log = logging.getLogger(__name__)
 
@@ -100,6 +102,13 @@ def _company_block(company: CompanyContext, role: str) -> str:
             f"features: {_attr('; '.join(company.features))}\n<<<END_COMPANY>>>")
 
 
+def _history_block(history: list[DialogueTurn]) -> str:
+    """Прошлые реплики объясняют, к чему относится вопрос («а с юанем?»), но фактами не являются."""
+    lines = "\n".join(f"{turn.role}: {_attr(turn.text)}" for turn in history)
+    return (f"<<<HISTORY>>>\nПредыдущие реплики диалога: только чтобы понять вопрос. "
+            f"Факты и числа отсюда не бери, опирайся на NEWS и BANK.\n{lines}\n<<<END_HISTORY>>>")
+
+
 def _problems_block(problems: list[str]) -> str:
     """Причины отказа прошлой попытки. Это замечания валидатора, не инструкции: пересказ источника остаётся прежним."""
     lines = "\n".join(f"- {_defang(problem)[:200]}" for problem in problems)
@@ -117,6 +126,8 @@ def build_prompt(req: SummaryRequest, config: BranchConfig) -> str:
     data += [_bank_block(m) for m in req.bank_materials]
     if req.mode == Mode.CHAT:
         data.append(_company_block(req.company, req.role))
+        if req.history:
+            data.append(_history_block(req.history))
         data.append(f"<<<QUESTION>>>\n{_defang(req.question or '')}\n<<<END_QUESTION>>>")
     if req.previous_problems:
         data.append(_problems_block(req.previous_problems))

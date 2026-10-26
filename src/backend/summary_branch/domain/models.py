@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -149,6 +149,12 @@ class CompanyProfile(BaseModel):
         return self
 
 
+class DialogueTurn(BaseModel):
+    """Реплика предыдущего диалога в чате. Контекст вопроса, не источник: утверждения на неё не опираются."""
+    role: Literal["user", "assistant"]
+    text: str = Field(max_length=600)
+
+
 class UserContext(BaseModel):
     user_id: str
     role: str = "cfo"
@@ -196,6 +202,7 @@ class SummaryRequest(BaseModel):
     bank_materials: list[BankMaterialRef] = Field(default_factory=list)
     budget: BudgetTier = BudgetTier.FULL
     previous_problems: list[str] = Field(default_factory=list)   # причины отказа прошлой попытки, только для повтора
+    history: list[DialogueTurn] = Field(default_factory=list, max_length=4)   # только для chat, старые первыми
 
     @property
     def role(self) -> str:
