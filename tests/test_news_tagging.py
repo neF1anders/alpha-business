@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from ingestion.common import write_json
 from ingestion.database import validate_document
@@ -34,6 +35,75 @@ def vocabulary(root):
 
 
 class NewsTests(unittest.TestCase):
+    def test_partial_content_is_explicit_and_preserves_source_quality(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            full = article()
+            title = dict(article('title', ''), title='В Китае вырос спрос на нефть',
+                         content_status='metadata_only', retrieval_eligible=False,
+                         quality_flags=['title_only', 'article_not_fetched'])
+            excerpt = dict(article('excerpt', 'Поставки выросли на 10%.'), title='Экспорт в Китай',
+                           content_status='short_excerpt', retrieval_eligible=False,
+                           quality_flags=['not_full_article', 'excerpt_truncated'])
+            review = dict(article('review', ''), title='Будущая новость',
+                          content_status='metadata_only', retrieval_eligible=False,
+                          quality_flags=['title_only', 'future_publication_date'])
+            blocked = dict(article('blocked'), content_status='partial_access', retrieval_eligible=False)
+            duplicate = dict(title, news_id='duplicate', duplicate_of='title')
+            source = root / 'combined.json'
+            write_json(source, [full, title, excerpt, review, blocked, duplicate])
+            strict = prepare_news(source, root / 'strict')
+            self.assertEqual(strict['counts']['accepted'], 1)
+            report = prepare_news(source, root / 'all', include_partial=True)
+            self.assertEqual(report['counts']['accepted'], 4)
+            self.assertEqual(report['counts']['needs_review'], 1)
+            self.assertEqual(report['content_kinds'], dict(full_text=1, title_only=2, excerpt=1))
+            self.assertEqual(report['rejection_reasons'], dict(source_not_eligible=1, source_duplicate=1))
+            docs = {d['external_id']: d for p in artifact_paths(root / 'all')
+                    for d in [json.loads(p.read_text(encoding='utf-8'))]}
+            for doc in docs.values():
+                validate_document(doc)
+            self.assertEqual(docs['title']['pages'][0]['text'], title['title'])
+            self.assertEqual(docs['excerpt']['pages'][0]['text'], 'Экспорт в Китай\n\nПоставки выросли на 10%.')
+            self.assertFalse(docs['title']['pages'][0]['needs_review'])
+            self.assertFalse(docs['excerpt']['pages'][0]['needs_review'])
+            self.assertTrue(docs['review']['pages'][0]['needs_review'])
+            self.assertFalse(docs['title']['source_metadata']['retrieval_eligible'])
+            self.assertEqual(docs['title']['source_metadata']['quality_flags'], title['quality_flags'])
+            self.assertTrue(docs['title']['source_metadata']['ingestion']['partial_retrieval_allowed'])
+
+    def test_dry_run_does_not_write_or_invalidate_existing_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'news.json'
+            write_json(source, [article(), dict(article('title', ''), content_status='metadata_only',
+                                              retrieval_eligible=False)])
+            preview = prepare_news(source, root / 'missing', include_partial=True, dry_run=True)
+            self.assertFalse((root / 'missing').exists())
+            self.assertEqual(preview['counts']['accepted'], 2)
+            actual = prepare_news(source, root / 'actual', include_partial=True)
+            before = {p.name: p.read_bytes() for p in (root / 'actual').iterdir()}
+            again = prepare_news(source, root / 'actual', include_partial=True, dry_run=True)
+            self.assertEqual(again['counts'], actual['counts'])
+            self.assertEqual(before, {p.name: p.read_bytes() for p in (root / 'actual').iterdir()})
+            write_json(source, [])
+            self.assertEqual(prepare_news(source, root / 'actual', dry_run=True)['counts']['rejected'], 0)
+            self.assertEqual(before, {p.name: p.read_bytes() for p in (root / 'actual').iterdir()})
+
+    def test_combined_filename_preserves_existing_document_and_chunk_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_json(root / 'old.json', [article()])
+            write_json(root / 'combined.json', [article(), article('new', 'Новый материал.')])
+            prepare_news(root / 'old.json', root / 'old')
+            prepare_news(root / 'combined.json', root / 'combined', include_partial=True)
+            old = json.loads(artifact_paths(root / 'old')[0].read_text(encoding='utf-8'))
+            combined = json.loads((root / 'combined' / (old['document_id'] + '.news.json')).read_text(encoding='utf-8'))
+            self.assertEqual(old['document_id'], combined['document_id'])
+            self.assertEqual(old['pages'], combined['pages'])
+            self.assertEqual(combined['source_metadata']['input_file'], 'combined.json')
+            self.assertEqual(combined['source_file'], 'combined.json#one')
+
     def test_jsonl_quality_duplicates_offsets_and_timestamp(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -67,6 +137,17 @@ class NewsTests(unittest.TestCase):
 
 
 class ImportRoutingTests(unittest.TestCase):
+    def test_cli_combined_preview_routes_without_model_or_database(self):
+        from ingestion.__main__ import main
+        with patch('sys.argv', ['ingestion', 'prepare-news', '--source', 'combined.jsonl',
+                                '--include-partial', '--dry-run']), \
+                patch('ingestion.news_documents.prepare_news', return_value={}) as prepare, \
+                patch('ingestion.tagging.SemanticSector', side_effect=AssertionError('No embeddings')), \
+                patch('ingestion.database.connect', side_effect=AssertionError('No database')):
+            main()
+            prepare.assert_called_once_with('combined.jsonl', 'data/processed/news', 1400, 200,
+                                            include_partial=True, dry_run=True)
+
     def test_explicit_formats_and_ambiguous_directory(self):
         from ingestion.__main__ import news_format
         with tempfile.TemporaryDirectory() as tmp:
@@ -82,6 +163,31 @@ class ImportRoutingTests(unittest.TestCase):
 
 
 class TaggingTests(unittest.TestCase):
+    def test_news_only_tags_title_and_excerpt_without_touching_pdf_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            v, companies = vocabulary(root)
+            rows = [dict(article('title', ''), title='Ключевая ставка в Китае',
+                         content_status='metadata_only', retrieval_eligible=False),
+                    dict(article('excerpt', 'Поставки выросли.'), title='Нефть из Китая',
+                         content_status='short_excerpt', retrieval_eligible=False)]
+            write_json(root / 'news.json', rows)
+            prepare_news(root / 'news.json', root / 'prepared', include_partial=True)
+            write_json(root / 'tagged/pdf/manifest.json', {'unchanged': True})
+            pdf_manifest = (root / 'tagged/pdf/manifest.json').read_bytes()
+            with patch('ingestion.tagging.SemanticSector', side_effect=AssertionError('No real embeddings')):
+                report = tag_artifacts(None, root / 'prepared', root / 'tagged', companies,
+                                       tagger=Tagger(v, FixedSector()), cache_dir=root / 'cache')
+            self.assertNotIn('pdf_documents', report['counts'])
+            self.assertEqual(report['counts']['news_documents'], 2)
+            self.assertEqual((root / 'tagged/pdf/manifest.json').read_bytes(), pdf_manifest)
+            for path in artifact_paths(root / 'tagged/news'):
+                doc = json.loads(path.read_text(encoding='utf-8'))
+                validate_document(doc)
+                self.assertFalse(doc['pages'][0]['needs_review'])
+                self.assertIn('country:КИТАЙ', doc['pages'][0]['chunks'][0]['tags'])
+                self.assertEqual(doc['source_metadata']['ingestion']['partial_retrieval_allowed'], True)
+
     def test_chunk_factors_and_canonical_geography(self):
         with tempfile.TemporaryDirectory() as tmp:
             v, _ = vocabulary(Path(tmp))
