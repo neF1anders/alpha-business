@@ -67,35 +67,63 @@ docs/                 архитектура, контракт API, сборка
 ## Быстрый старт
 
 Нужны [uv](https://docs.astral.sh/uv/) и Docker. Окружение Python управляется только через `uv`.
+Команды выполняются из корня клона; `docker compose` одинаков в bash и PowerShell.
+Пояснения к каждому шагу и ожидаемые количества строк: [docs/database.md](docs/database.md).
+
+**1. Настройки.** Скопируйте шаблон и задайте свой `POSTGRES_PASSWORD` (тот же пароль в `DATABASE_URL`).
+`API_KEY` — ключ LLM-шлюза; оставьте пустым, чтобы работала детерминированная заглушка.
+Пишите `KEY=value` без пробелов вокруг `=`: файл читают и Compose, и shell.
 
 ```bash
-cp .env.example .env                      # пароль БД; API_KEY для LLM-шлюза (без ключа работает детерминированная заглушка)
-docker compose up -d db
-docker compose run --rm ingest init-db    # затем загрузка данных: docs/database.md
-uv run python -m scripts.build_tags --from-db
+cp .env.example .env
 ```
 
-Бэкенд в Docker: один образ на ингест и оркестратор, torch ставится один раз.
+**2. БД и данные** (один раз; OCR и разметка на CPU занимают десятки минут, повтор берёт результаты из кэша):
 
 ```bash
-docker compose up -d --build orchestrator          # http://127.0.0.1:8000/docs
+docker compose up -d --wait db
+docker compose build ingest
+docker compose run --rm ingest init-db
+docker compose run --rm ingest prepare-csv
+docker compose run --rm ingest load-csv
+docker compose run --rm ingest extract-pdfs --metadata data/reports-metadata.json
+docker compose run --rm ingest prepare-news
+docker compose run --rm ingest tag-chunks
+docker compose run --rm ingest load-pdfs
+docker compose run --rm ingest load-news                                         # чанки для RAG
+docker compose run --rm ingest load-news --source data/raw/reports/news.jsonl    # статьи для ленты и чата
+docker compose run --rm --entrypoint python ingest -m scripts.build_tags --from-db
 ```
 
-Локально без Docker:
+Лента и чат ищут новости в `insights.news_articles`; её заполняет только предпоследняя команда.
+Без неё баннеры отвечают «нет подходящих новостей». Последняя команда пишет
+`data/processed/company_tags.csv` — профили компаний для оркестратора; без файла запросы по компаниям завершаются ошибкой.
+
+**3. Бэкенд** — в Docker (`.env` подхватывается сам):
 
 ```bash
-uv sync                                     # основные зависимости; + --extra ml для E5, cross-encoder и ингеста
+docker compose up -d --build orchestrator          # http://127.0.0.1:8000/docs, /health
+```
+
+или локально. Локальный процесс **не читает `.env`**, переменные нужно экспортировать:
+
+```bash
+uv sync --extra ml
+set -a; . ./.env; set +a                           # DATABASE_URL, API_KEY, LLM_* в окружение процесса
 uv run python -m orchestrator
 ```
 
-Фронт:
+**4. Фронт:**
 
 ```bash
 uv run python -m http.server 5173 --bind 127.0.0.1 -d src/frontend
-# http://127.0.0.1:5173/?api=http&base=http://127.0.0.1:8000&company=<synthetic_u>
+# http://127.0.0.1:5173/login.html?api=http&base=http://127.0.0.1:8000
 ```
 
-Без `?api=http` фронт работает на встроенном моке. Если в `.env` задан `DEMO_COMPANY_ID`, можно не передавать `company`.
+На странице входа выберите компанию и сотрудника в блоке «Демо-доступ» или войдите по телефону
+из этого блока с паролем `demo2026`. Роль сотрудника передаётся в API (`?role=`) и меняет акценты баннеров.
+Без `?api=http` фронт работает на встроенном моке. Прямая ссылка без входа:
+`/?api=http&base=http://127.0.0.1:8000&company=<synthetic_u>`.
 
 ## Переменные окружения
 
