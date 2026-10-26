@@ -62,7 +62,7 @@ def create_default_app(settings: Settings | None = None):
     settings = settings or Settings.from_env()
     limits = Limits(banner_slo_s=settings.banner_slo_s, chat_slo_s=settings.chat_slo_s)
     profiles = CsvProfileRepository(settings.tags_path)
-    retriever = PostgresNewsRetriever(bank_enabled=False)
+    retriever = PostgresNewsRetriever(bank_enabled=False, include_briefs=settings.news_briefs)
     reranker = TagReranker()
     startup = (profiles.warmup,)
     if settings.news_search_mode == "local_semantic":

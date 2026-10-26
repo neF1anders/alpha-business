@@ -74,6 +74,8 @@ def main():
     news = commands.add_parser('load-news', help='Load a prepared chunk manifest, an audited news snapshot or full articles from a collector JSONL')
     news.add_argument('--source', default='data/processed/tagged/news')
     news.add_argument('--format', choices=['auto','chunks','snapshot','jsonl'], default='auto')
+    news.add_argument('--include-partial', action='store_true',
+                      help='jsonl: also load headlines and excerpts into news_briefs (shown as briefs)')
     find = commands.add_parser('search', help='Smoke-test full-text retrieval')
     find.add_argument('query')
     find.add_argument('--limit', type=int, default=5)
@@ -112,7 +114,7 @@ def main():
             if format_ == 'snapshot':
                 result = load_news_snapshot(store, args.source)
             elif format_ == 'jsonl':
-                result = load_collector_jsonl(store, args.source)
+                result = load_collector_jsonl(store, args.source, include_partial=args.include_partial)
             else:
                 loaded = load_news(storage, store, args.source)
                 result = {'documents': len(loaded), 'statuses': dict(Counter(item['status'] for item in loaded))}

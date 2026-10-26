@@ -1,5 +1,6 @@
 import { h, icon } from "../../ui/dom.js";
 import { formatExpiresIn } from "./format.js";
+import { briefLabel } from "../model.js";
 
 /**
  * Figma `Banner/Card`: variants attention / watch / opportunity / caveat / raw_news.
@@ -23,7 +24,11 @@ function renderHeader(banner, service) {
   return h(
     "div",
     { class: "banner-card__header" },
-    h("span", { class: ["severity-chip", banner.raw_news && "severity-chip--news"] }, banner.raw_news ? "Новость" : banner.label),
+    h(
+      "span",
+      { class: ["severity-chip", banner.raw_news && "severity-chip--news"] },
+      banner.raw_news ? rawNewsLabel(banner) : banner.label,
+    ),
     h("span", { class: "banner-card__expires" }, formatExpiresIn(banner.expires_at)),
     h(
       "button",
@@ -37,6 +42,11 @@ function renderHeader(banner, service) {
       icon("close-14", 14),
     ),
   );
+}
+
+function rawNewsLabel(banner) {
+  const brief = briefLabel(banner.sources[0]);
+  return brief ? `Новость · ${brief}` : "Новость";
 }
 
 function renderForYou(text) {
@@ -59,6 +69,7 @@ export function renderSources(sources) {
         { class: "source-chip", href: source.url, target: "_blank", rel: "noopener noreferrer", title: source.url },
         icon("link", 11),
         source.title,
+        briefLabel(source) && h("span", { class: "source-chip__brief" }, briefLabel(source)),
       ),
     ),
   );

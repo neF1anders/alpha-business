@@ -45,8 +45,8 @@ def load_news_snapshot(directory):
     return load_news_snapshot_module.load_news_snapshot(PostgresDocumentStore(), directory)
 
 
-def load_collector_jsonl(path):
-    return load_news_snapshot_module.load_collector_jsonl(PostgresDocumentStore(), path)
+def load_collector_jsonl(path, **options):
+    return load_news_snapshot_module.load_collector_jsonl(PostgresDocumentStore(), path, **options)
 
 
 # Namespace mirroring the former ingestion.database module; connect() is looked up at call

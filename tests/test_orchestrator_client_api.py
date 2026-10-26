@@ -117,6 +117,13 @@ class ClientApiTests(unittest.TestCase):
         client.post("/api/companies/U_1/chat", json={"question": "Что это значит?", "banner_id": banner["banner_id"]})
         self.assertEqual(retriever.queries[-1].question, banner["sources"][0]["title"])
 
+    def test_brief_source_is_marked_for_the_client(self):
+        brief = replace(RATE, news_id="b1", cluster_id="brief", content_kind="excerpt")
+        client, _, _ = make_client(FakeRetriever([brief]))
+        items = client.get("/api/companies/U_1/signals").json()["items"]
+        self.assertTrue(items)
+        self.assertEqual({s["content_kind"] for s in items[0]["sources"] if s["ref_id"] == "b1"}, {"excerpt"})
+
     def test_short_follow_up_is_searched_with_previous_question(self):
         retriever = FakeRetriever([STEEL, RATE])
         client, _, _ = make_client(retriever)

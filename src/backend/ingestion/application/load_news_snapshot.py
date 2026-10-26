@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..domain.news_snapshot import FIELDS, aware
+from ..domain.news_snapshot import BRIEF_FIELDS, BRIEF_STATUSES, FIELDS, aware, brief_kind
 from ..domain.news_urls import canonical_url, digest
 
 
@@ -32,8 +32,8 @@ def article_values(row, fingerprint):
     return values
 
 
-def reject_duplicates(rows):
-    seen = {k: set() for k in ('news_id', 'url', 'text_sha256')}
+def reject_duplicates(rows, keys=('news_id', 'url', 'text_sha256')):
+    seen = {k: set() for k in keys}
     for row in rows:
         for key in seen:
             if row[key] in seen[key]:
@@ -105,7 +105,42 @@ def load_news_snapshot(store, directory):
     return store.import_news_snapshot(root, fingerprint, rows, report, audit)
 
 
-def load_collector_jsonl(store, path):
+def brief_values(row, fingerprint):
+    """Validate a headline/excerpt record; its quality flags only say the article was not fetched."""
+    for name in ('news_id', 'url', 'title', 'source', 'source_kind'):
+        if not isinstance(row.get(name), str) or not row[name].strip() or '\x00' in row[name]:
+            raise ValueError(f'Invalid brief field: {name}')
+    if row['source_kind'] not in ('primary', 'media', 'bank'):
+        raise ValueError('Unknown source kind')
+    title = row['title'].strip()
+    excerpt = (row.get('text') or '').replace('\x00', '').strip()
+    values = dict(row, title=title, excerpt=excerpt, content_kind=brief_kind(title, excerpt),
+                  categories=row.get('categories') or [], source_record=row, first_import_sha256=fingerprint)
+    values['published_at'] = aware(row['published_at'], 'published_at')
+    values['fetched_at'] = aware(row.get('fetched_at'), 'fetched_at', optional=True)
+    if values['published_at'] > datetime.now(timezone.utc):
+        raise ValueError('Future publication')
+    return values
+
+
+def read_collector_briefs(path):
+    """Headlines and excerpts of a collector JSONL: records the collector could not fetch in full."""
+    path = Path(path).resolve()
+    raw = path.read_bytes()
+    fingerprint = digest(raw)
+    rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
+    briefs = [row for row in rows if row.get('retrieval_eligible') is not True and not row.get('duplicate_of')
+              and row.get('content_status') in BRIEF_STATUSES]
+    prepared = [tuple(brief_values(row, fingerprint)[name] for name in BRIEF_FIELDS) for row in briefs]
+    reject_duplicates(briefs, ('news_id', 'url'))
+    report = dict(format='collector_jsonl_briefs', input=len(rows), briefs=len(briefs), target_met=None)
+    return path, fingerprint, prepared, report
+
+
+def load_collector_jsonl(store, path, *, include_partial=False):
+    """Full articles go to news_articles; with include_partial headlines and excerpts go to news_briefs."""
     result = store.import_news_snapshot(*read_collector_jsonl(path))
     result.pop('collection_target_met')
+    if include_partial:
+        result['briefs'] = store.import_news_briefs(*read_collector_briefs(path))
     return result

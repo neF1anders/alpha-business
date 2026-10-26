@@ -8,7 +8,7 @@ import psycopg
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
-from ..domain.news_snapshot import FIELDS, IMMUTABLE
+from ..domain.news_snapshot import BRIEF_FIELDS, FIELDS, IMMUTABLE
 from ..domain.taxonomy import FACTORS
 from .filesystem import sha256
 from ..domain.csv_rules import SOURCES
@@ -168,3 +168,30 @@ class PostgresDocumentStore:
             return dict(status='loaded' if after > before else 'unchanged', snapshot_records=loaded,
                         added=after-before, total=after, import_sha256=fingerprint,
                         collection_target_met=report['target_met'])
+
+    def import_news_briefs(self, source, fingerprint, rows, report):
+        """Add new headlines/excerpts; a brief never replaces an article or an earlier brief."""
+        names = sql.SQL(',').join(map(sql.Identifier, BRIEF_FIELDS))
+        record = BRIEF_FIELDS.index('source_record')
+        with connect() as conn:
+            conn.execute('SELECT pg_advisory_xact_lock(521103)')
+            conn.execute("SET LOCAL statement_timeout = '120s'")
+            conn.execute('''INSERT INTO insights.news_imports
+                (import_sha256,source_path,row_count,report,audit) VALUES (%s,%s,%s,%s,%s)
+                ON CONFLICT(import_sha256) DO NOTHING''',
+                         (fingerprint, str(source), max(len(rows), 1), Jsonb(report),
+                          Jsonb(dict(verified=False, reason='collector briefs have no source receipts'))))
+            conn.execute('CREATE TEMP TABLE stage_briefs (LIKE insights.news_briefs) ON COMMIT DROP')
+            with conn.cursor().copy(sql.SQL('COPY stage_briefs ({}) FROM STDIN').format(names)) as copy:
+                for row in rows:
+                    values = list(row)
+                    values[record] = Jsonb(values[record])
+                    copy.write_row(values)
+            before = conn.execute('SELECT count(*) FROM insights.news_briefs').fetchone()[0]
+            # A full article with the same ID or URL already carries the content.
+            conn.execute(sql.SQL('''INSERT INTO insights.news_briefs ({}) SELECT {} FROM stage_briefs s
+                WHERE NOT EXISTS (SELECT 1 FROM insights.news_articles a WHERE a.news_id = s.news_id OR a.url = s.url)
+                ON CONFLICT DO NOTHING''').format(names, names))
+            after = conn.execute('SELECT count(*) FROM insights.news_briefs').fetchone()[0]
+            return dict(status='loaded' if after > before else 'unchanged', records=len(rows),
+                        added=after - before, total=after)

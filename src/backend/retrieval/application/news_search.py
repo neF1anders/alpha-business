@@ -29,12 +29,12 @@ def event_leads(news):
 
 class NewsSearch:
     def __init__(self, store: NewsSearchStore, report_files: ReportFileCatalog, *, timeout_s=0.65,
-                 lookback_days=90, max_concurrency=4, bank_enabled=True, reports_root=None):
+                 lookback_days=90, max_concurrency=4, bank_enabled=True, reports_root=None, include_briefs=True):
         if not 0 < timeout_s <= 5 or not 1 <= lookback_days <= 365 or not 1 <= max_concurrency <= 16:
             raise ValueError('Invalid retrieval bounds')
         self.store, self.report_files = store, report_files
         self.timeout_s, self.lookback_days = timeout_s, lookback_days
-        self.bank_enabled = bank_enabled
+        self.bank_enabled, self.include_briefs = bank_enabled, include_briefs
         self.reports_root = Path(reports_root).resolve() if reports_root is not None else None
         self._semaphore = asyncio.Semaphore(max_concurrency)
 
@@ -68,7 +68,7 @@ class NewsSearch:
                         rules=rules, search=search, geo_pattern=geo_pattern, geo_search=geo_search,
                         as_of=as_of, since=since, candidate_limit=min(max(query.limit*5, 50), 300),
                         tags=sorted(query.tags), tag_count=sum(r['tag'] in query.tags for r in rules),
-                        chat=query.question is not None)
+                        chat=query.question is not None, briefs=self.include_briefs)
                     news, members, headlines = [], {}, set()
                     for row in rows:
                         headline = headline_cluster_id(row['title'], row['published_at'])
@@ -85,7 +85,7 @@ class NewsSearch:
                         news.append(NewsItem(news_id=row['news_id'],cluster_id=cluster_id,title=row['title'],
                             text=row['text'],url=row['url'],published_at=row['published_at'],
                             source_kind=SourceKind(row['source_kind']),tags=frozenset(row['tags']),
-                            retrieval_score=float(row['score'])))
+                            retrieval_score=float(row['score']), content_kind=row['content_kind']))
                     bank = await self._bank(session, news, as_of) if news and self.bank_enabled else ()
                     return RetrievalResult(news=tuple(news), bank_materials=bank)
 

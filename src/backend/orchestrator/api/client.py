@@ -55,6 +55,7 @@ class SourceOut(BaseModel):
     title: str
     url: str
     ref_id: str = ""
+    content_kind: str = "full_text"                  # excerpt / title_only: фронт помечает «анонс» / «заголовок»
 
 
 class BannerOut(BaseModel):
@@ -219,7 +220,8 @@ def _url(url: str, base: str) -> str:
 
 
 def _source(s: SourceRef, base: str) -> SourceOut:
-    return SourceOut(kind=s.kind.value, title=s.title, url=_url(s.url, base), ref_id=s.ref_id)
+    return SourceOut(kind=s.kind.value, title=s.title, url=_url(s.url, base), ref_id=s.ref_id,
+                     content_kind=s.content_kind)
 
 
 def banner_out(b: Banner, base: str) -> BannerOut:

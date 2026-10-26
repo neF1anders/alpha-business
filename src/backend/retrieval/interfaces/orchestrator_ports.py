@@ -18,10 +18,11 @@ from ..infrastructure.report_files import FilesystemReportCatalog
 
 
 class PostgresNewsRetriever(NewsSearch):
-    def __init__(self, *, timeout_s=0.65, lookback_days=90, max_concurrency=4, bank_enabled=True, reports_root=None):
+    def __init__(self, *, timeout_s=0.65, lookback_days=90, max_concurrency=4, bank_enabled=True, reports_root=None,
+                 include_briefs=True):
         super().__init__(PostgresNewsStore(), FilesystemReportCatalog(), timeout_s=timeout_s,
                          lookback_days=lookback_days, max_concurrency=max_concurrency,
-                         bank_enabled=bank_enabled, reports_root=reports_root)
+                         bank_enabled=bank_enabled, reports_root=reports_root, include_briefs=include_briefs)
 
 
 class PostgresEventRetriever(EventRetrieval):

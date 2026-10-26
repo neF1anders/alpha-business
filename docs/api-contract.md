@@ -31,11 +31,13 @@
   "caveat": false,
   "raw_news": false,
   "placements": ["payments", "new_payment"],
-  "sources": [{"kind": "primary | bank | media", "title": "…", "url": "https://…", "ref_id": "news_id | doc_id"}],
+  "sources": [{"kind": "primary | bank | media", "title": "…", "url": "https://…", "ref_id": "news_id | doc_id",
+               "content_kind": "full_text | excerpt | title_only"}],
   "expires_at": "2026-10-26T12:00:00Z"
 }
 ```
 
+- `content_kind`: `excerpt` или `title_only` — статья не скачана, источник — только анонс или заголовок. Фронт подписывает источник «анонс» / «только заголовок».
 - `raw_news=true`: низкая уверенность или новость не успела к сроку. Тогда `headline` — заголовок новости, а `for_you` пустой.
 - Баннер «только новость», не успевший к сроку, приходит с `banner_id = raw-<cluster_id>`. Когда ветка доводит его, по SSE приходит `invalidate ["raw-<cluster_id>"]`, затем `banners [готовый]`.
 - `placements` — страницы действий, где путь влияния уместен как плашка: поставщики → `payments` и `new_payment`, покупатели → `payments` и `counterparties`.

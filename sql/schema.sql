@@ -143,3 +143,26 @@ CREATE TABLE IF NOT EXISTS insights.news_import_items (
 );
 COMMENT ON TABLE insights.news_articles IS
     'Extracted publications, not event clusters or company relevance labels. Original source_record retained.';
+-- Headlines and short excerpts without a fetched article (collector content_status metadata_only /
+-- short_excerpt). Kept apart from news_articles: those hold full texts only, and a brief must be shown
+-- to the client as a brief. A full article with the same news_id always wins in retrieval.
+CREATE TABLE IF NOT EXISTS insights.news_briefs (
+    news_id text PRIMARY KEY,
+    url text NOT NULL UNIQUE,
+    title text NOT NULL CHECK (length(title) > 0),
+    excerpt text NOT NULL DEFAULT '',
+    content_kind text NOT NULL CHECK (content_kind IN ('excerpt', 'title_only')),
+    source text NOT NULL,
+    source_kind text NOT NULL CHECK (source_kind IN ('primary', 'media', 'bank')),
+    published_at timestamptz NOT NULL,
+    fetched_at timestamptz,
+    categories text[] NOT NULL DEFAULT '{}',
+    source_record jsonb NOT NULL,
+    first_import_sha256 text NOT NULL REFERENCES insights.news_imports(import_sha256),
+    search_vector tsvector GENERATED ALWAYS AS (
+        setweight(to_tsvector('russian', title), 'A') ||
+        setweight(to_tsvector('russian', excerpt), 'B')
+    ) STORED
+);
+CREATE INDEX IF NOT EXISTS news_briefs_search ON insights.news_briefs USING gin(search_vector);
+CREATE INDEX IF NOT EXISTS news_briefs_published ON insights.news_briefs(published_at DESC);

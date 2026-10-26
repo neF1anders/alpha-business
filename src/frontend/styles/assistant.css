@@ -513,6 +513,13 @@ html:not(.is-drawer-open) .drawer > * {
     background-color var(--dur-fast) linear;
 }
 
+.source-chip__brief {
+  padding-left: 4px;
+  border-left: 1px solid var(--line-default);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 .source-chip:hover {
   background: var(--bg-muted);
   color: var(--text-primary);

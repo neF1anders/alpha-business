@@ -283,7 +283,7 @@ class GetBanners(_Pipeline):
         item = ranked.item
         return Banner(
             banner_id=raw_banner_id(item.cluster_id), severity=Severity.WATCH, label="Новость", headline=item.title,
-            for_you="", sources=(SourceRef(item.source_kind, item.title, item.url, item.news_id),),
+            for_you="", sources=(SourceRef(item.source_kind, item.title, item.url, item.news_id, item.content_kind),),
             expires_at=utcnow() + self._limits.fallback_banner_ttl, raw_news=True, cluster_id=item.cluster_id)
 
     @staticmethod
@@ -392,7 +392,8 @@ class AnswerChat(_Pipeline):
         item = top.item
         return ChatAnswer(
             answer_id=f"raw-{item.news_id}", claims=(Claim("fact", item.title, (item.url,)),),
-            sources=(SourceRef(item.source_kind, item.title, item.url, item.news_id),), confidence=0.0, raw_news=True)
+            sources=(SourceRef(item.source_kind, item.title, item.url, item.news_id, item.content_kind),),
+            confidence=0.0, raw_news=True)
 
     @staticmethod
     def _empty_answer() -> ChatAnswer:

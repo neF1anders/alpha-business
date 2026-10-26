@@ -92,6 +92,7 @@ docker compose run --rm ingest tag-chunks
 docker compose run --rm ingest load-pdfs
 docker compose run --rm ingest load-news                                         # чанки для RAG
 docker compose run --rm ingest load-news --source data/raw/reports/news.jsonl    # статьи для ленты и чата
+docker compose run --rm ingest load-news --source data/raw/reports/news_combined.jsonl --include-partial   # + заголовки и анонсы
 docker compose run --rm --entrypoint python ingest -m scripts.build_tags --from-db
 ```
 
@@ -136,6 +137,7 @@ uv run python -m http.server 5173 --bind 127.0.0.1 -d src/frontend
 | `BANNER_STORE_PATH` | `data/cache/banners.db` | SQLite с баннерами (в Docker — volume `banner-store`) |
 | `DEMO_COMPANY_ID` | — | компания для `demo-company` во фронте |
 | `CORS_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` | origin фронта |
+| `NEWS_BRIEFS` | `1` | `0` убирает из ленты и чата заголовки и анонсы (`news_briefs`) |
 | `NEWS_SEARCH_MODE`, `NEWS_CANDIDATE_LIMIT` | `lexical`, 80 | `local_semantic` включает E5 и cross-encoder ([docs/retrieval.md](docs/retrieval.md)) |
 | `COMPANY_TAGS_PATH`, `REPORTS_PATH` | `data/processed/company_tags.csv`, `data/raw/reports` | теги компаний и PDF аналитики |
 

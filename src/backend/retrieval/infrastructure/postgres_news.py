@@ -19,8 +19,17 @@ WITH rules AS MATERIALIZED (
                 ELSE websearch_to_tsquery('russian', %(search)s) END AS query,
            websearch_to_tsquery('russian', %(geo_search)s) AS geo_query,
            (SELECT count(*) FROM terms) AS term_count
+), publications AS (
+    SELECT news_id,title,text,url,source_kind,published_at,search_vector,'full_text' AS content_kind
+    FROM insights.news_articles
+    UNION ALL
+    -- Headlines and excerpts of articles that were not fetched; a full article always wins.
+    SELECT b.news_id,b.title,CASE WHEN b.excerpt = '' THEN b.title ELSE b.excerpt END,b.url,b.source_kind,
+           b.published_at,b.search_vector,b.content_kind
+    FROM insights.news_briefs b
+    WHERE %(briefs)s AND NOT EXISTS (SELECT 1 FROM insights.news_articles a WHERE a.news_id = b.news_id)
 ), matched AS MATERIALIZED (
-    SELECT n.news_id,n.title,n.text,n.url,n.source_kind,n.published_at,n.search_vector,
+    SELECT n.news_id,n.title,n.text,n.url,n.source_kind,n.published_at,n.search_vector,n.content_kind,
            ts_rank_cd(n.search_vector, m.query, 32) AS lexical_score,
            CASE WHEN %(chat)s THEN (SELECT count(*) FROM terms t
                 WHERE t.word = ANY(tsvector_to_array(n.search_vector))) ELSE 0 END AS matched_terms,
@@ -28,7 +37,7 @@ WITH rules AS MATERIALIZED (
            CASE WHEN %(chat)s THEN (SELECT count(*) FROM terms t
                 WHERE t.word = ANY(tsvector_to_array(to_tsvector('russian', n.title)))) ELSE 0 END AS title_terms,
            m.term_count
-    FROM insights.news_articles n CROSS JOIN model m
+    FROM publications n CROSS JOIN model m
     WHERE (n.search_vector @@ m.query OR (NOT %(chat)s AND %(geo_pattern)s::text IS NOT NULL
            AND n.search_vector @@ m.geo_query AND replace(lower(n.title || ' ' || n.text),'ё','е') ~ %(geo_pattern)s))
       AND n.published_at <= %(as_of)s AND n.published_at >= %(since)s
@@ -50,7 +59,9 @@ WITH rules AS MATERIALIZED (
     SELECT t.*, (SELECT count(*) FROM unnest(t.tags) x WHERE x = ANY(%(tags)s::text[])) AS tag_hits
     FROM tagged t
 )
-SELECT news_id,title,text,url,source_kind,published_at,tags,
+SELECT news_id,title,text,url,source_kind,published_at,tags,content_kind,
+       -- On the same topic a full article beats an excerpt, an excerpt beats a bare headline.
+       CASE content_kind WHEN 'excerpt' THEN 0.85 WHEN 'title_only' THEN 0.7 ELSE 1 END *
        CASE WHEN %(chat)s THEN (0.35*matched_terms + 0.4*title_terms)/GREATEST(term_count,1)
                                + 0.15*lexical_score + 0.1*tag_hits/GREATEST(%(tag_count)s,1)
             ELSE 0.4*lexical_score + 0.6*tag_hits/GREATEST(%(tag_count)s,1) END AS score
@@ -94,9 +105,9 @@ class PostgresNewsSession:
         self._connection = connection
 
     async def fetch_news(self, *, rules, search, geo_pattern, geo_search, as_of, since,
-                         candidate_limit, tags, tag_count, chat):
+                         candidate_limit, tags, tag_count, chat, briefs=True):
         params = dict(rules=Jsonb(rules), search=search, geo_pattern=geo_pattern, geo_search=geo_search, as_of=as_of, since=since,
-                      candidate_limit=candidate_limit, tags=tags, tag_count=tag_count, chat=chat)
+                      candidate_limit=candidate_limit, tags=tags, tag_count=tag_count, chat=chat, briefs=briefs)
         cursor = await self._connection.execute(NEWS_SQL, params)
         return await cursor.fetchall()
 

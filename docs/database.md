@@ -111,10 +111,11 @@ Engine с Compose). Python и Tesseract на компьютер устанавл
    docker compose run --rm ingest load-pdfs
    docker compose run --rm ingest load-news
    docker compose run --rm ingest load-news --source data/raw/reports/news.jsonl
+   docker compose run --rm ingest load-news --source data/raw/reports/news_combined.jsonl --include-partial
    docker compose run --rm --entrypoint python ingest -m scripts.build_tags --from-db
    ```
 
-   Две последние команды нужны продукту. Первая из них загружает полные статьи
+   Три последние команды нужны продукту. Первая из них загружает полные статьи
    в `insights.news_articles` — эту таблицу читают лента баннеров и чат (`load-news`
    без `--source` заполняет только чанки `rag_chunks`). Для файла формат
    определяется автоматически (`--format jsonl`): берутся записи с
@@ -122,7 +123,9 @@ Engine с Compose). Python и Tesseract на компьютер устанавл
    как непроверенный (`raw_receipt.kind=collector_jsonl`), потому что HTML-квитанций
    источника в репозитории нет. Аудированный снимок сборщика по-прежнему грузится
    через `--format snapshot`. Повторный запуск возвращает `unchanged`.
-   Вторая собирает `data/processed/company_tags.csv` — теги компаний для оркестратора.
+   Вторая с `--include-partial` добавляет заголовки и анонсы объединённого набора
+   в `insights.news_briefs` (см. [news-combined.md](news-combined.md#5а-статьи-для-ленты-и-чата)).
+   Последняя собирает `data/processed/company_tags.csv` — теги компаний для оркестратора.
 
    OCR 64 страниц может занять несколько минут. JSON в `data/processed/pdf/` —
    промежуточный результат. `prepare-news` читает `news.jsonl` без OCR.
@@ -198,7 +201,8 @@ docker compose exec db psql -U insights -d insights
 SELECT 'companies' AS dataset, count(*) FROM insights.companies
 UNION ALL SELECT 'person_links', count(*) FROM insights.person_links
 UNION ALL SELECT 'payments', count(*) FROM insights.payments
-UNION ALL SELECT 'news_articles', count(*) FROM insights.news_articles;
+UNION ALL SELECT 'news_articles', count(*) FROM insights.news_articles
+UNION ALL SELECT 'news_briefs', count(*) FROM insights.news_briefs;
 
 SELECT d.source_type, count(DISTINCT d.document_id) AS documents,
        count(*) AS chunks,
@@ -220,6 +224,7 @@ SELECT count(*) AS retrieval_chunks FROM insights.rag_chunks;
 | PDF / их чанки | 9 / 163 |
 | JSONL-новости / их чанки | 5 878 / 11 156 |
 | Статьи для ленты (`news_articles`) | 5 878 |
+| Заголовки и анонсы (`news_briefs`) | 41 399 |
 | Все чанки / размеченные чанки | 11 319 / 11 319 |
 | Чанки в `rag_chunks` | 11 317 |
 

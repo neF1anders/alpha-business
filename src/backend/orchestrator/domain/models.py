@@ -110,6 +110,7 @@ class NewsItem:
     primary_url: Optional[str] = None
     tags: frozenset[str] = frozenset()
     retrieval_score: float = 0.0                     # оценка retriever, 0..1
+    content_kind: str = "full_text"                  # full_text | excerpt | title_only: полнота материала
 
 
 @dataclass(frozen=True)
@@ -167,6 +168,7 @@ class SourceRef:
     title: str
     url: str
     ref_id: str = ""                                 # news_id или doc_id: связь утверждения чата с источником
+    content_kind: str = "full_text"                  # клиенту показывается, что источник — анонс или заголовок
 
 
 @dataclass(frozen=True)

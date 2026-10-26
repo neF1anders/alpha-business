@@ -8,6 +8,16 @@ CORE = ('news_id', 'url', 'title', 'text', 'source', 'source_kind',
 FIELDS = CORE + ('categories', 'source_record', 'raw_receipt', 'first_import_sha256')
 
 
+# Headline/excerpt records without a fetched article (collector content_status).
+BRIEF_FIELDS = ('news_id', 'url', 'title', 'excerpt', 'content_kind', 'source', 'source_kind',
+                'published_at', 'fetched_at', 'categories', 'source_record', 'first_import_sha256')
+BRIEF_STATUSES = frozenset({'short_excerpt', 'metadata_only'})
+
+
+def brief_kind(title, excerpt):
+    return 'excerpt' if excerpt and excerpt != title else 'title_only'
+
+
 # Fetch metadata may vary between snapshots; original article content must not.
 IMMUTABLE = ('url', 'title', 'text', 'source', 'source_kind', 'published_at', 'event_at', 'text_sha256')
 

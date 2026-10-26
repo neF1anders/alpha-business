@@ -53,7 +53,9 @@ evidence_ids опору, а без опоры вывод не пиши.
 8. topic — макрофактор: rate, fx, labor, demand и т. п.
 9. severity: attention — событие требует реакции или пересмотра планов в ближайшие дни (решение по ключевой ставке, \
 резкое движение курса, санкции и ограничения); opportunity — возможность, которой можно воспользоваться; \
-watch — фон, который стоит держать в поле зрения."""
+watch — фон, который стоит держать в поле зрения.
+10. Если у новости content="excerpt" или content="title_only", статья не скачана: есть только анонс или заголовок. \
+Пересказывай только написанное в нём, не достраивай подробности, причины и числа."""
 
 _MODE_RULES = {
     Mode.BANNER: ("Режим banner: текст общий для всех компаний, не упоминай конкретную компанию. "
@@ -82,7 +84,7 @@ def _attr(text: str) -> str:
 
 
 def _news_block(news: RankedNewsItem, max_chars: int) -> str:
-    return (f'<<<NEWS id="{_attr(news.news_id)}" kind="{news.source_kind.value}" '
+    return (f'<<<NEWS id="{_attr(news.news_id)}" kind="{news.source_kind.value}" content="{news.content_kind}" '
             f'published="{news.published_at.isoformat()}" tags="{_attr(",".join(news.tags))}">>>\n'
             f"title: {_attr(news.title)}\n"
             f"text: {_defang(news.text[:max_chars])}\n"

@@ -29,7 +29,8 @@ log = logging.getLogger(__name__)
 
 
 def _lead_source(news: RankedNewsItem) -> SourceRef:
-    return SourceRef(kind=news.source_kind, title=news.title, url=news.url, ref_id=news.news_id)
+    return SourceRef(kind=news.source_kind, title=news.title, url=news.url, ref_id=news.news_id,
+                     content_kind=news.content_kind)
 
 
 class DefaultSummaryBranch:

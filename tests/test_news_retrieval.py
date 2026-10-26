@@ -139,6 +139,24 @@ class NewsRetrievalTests(unittest.IsolatedAsyncioTestCase):
         reply=await r.retrieve(NewsQuery(frozenset(),question='Какие доходы у марсианских магазинов?',as_of=AS_OF))
         self.assertEqual(reply.news,())
 
+    async def test_brief_is_marked_and_ranked_below_the_full_article(self):
+        with database.connect() as c:
+            c.execute('''INSERT INTO insights.news_briefs
+                (news_id,url,title,excerpt,content_kind,source,source_kind,published_at,source_record,first_import_sha256)
+                VALUES ('b1','https://example.org/b1','Курс юаня вырос на бирже','', 'title_only','test','media',
+                        '2026-09-12T11:00:00Z','{}',%s),
+                       ('n6','https://example.org/b6','Курс юаня вырос','Анонс','excerpt','test','media',
+                        '2026-09-12T11:00:00Z','{}',%s)''',('a'*64,'a'*64))
+        try:
+            r=PostgresNewsRetriever(timeout_s=2,bank_enabled=False)
+            reply=await r.retrieve(NewsQuery(frozenset(),question='Насколько вырос курс юаня к рублю?',as_of=AS_OF))
+            self.assertEqual([(n.news_id,n.content_kind) for n in reply.news],[('n6','full_text'),('b1','title_only')])
+            self.assertEqual(reply.news[1].text,'Курс юаня вырос на бирже')   # title stands in for the missing text
+            off=PostgresNewsRetriever(timeout_s=2,bank_enabled=False,include_briefs=False)
+            self.assertEqual([n.news_id for n in (await off.retrieve(NewsQuery(frozenset(),question='курс юаня',as_of=AS_OF))).news],['n6'])
+        finally:
+            with database.connect() as c:c.execute("DELETE FROM insights.news_briefs")
+
     async def test_unavailable_pdf_is_not_returned_as_a_broken_link(self):
         with tempfile.TemporaryDirectory() as tmp:
             result=await PostgresNewsRetriever(timeout_s=2,reports_root=tmp).retrieve(

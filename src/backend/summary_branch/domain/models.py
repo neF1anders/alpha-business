@@ -170,6 +170,9 @@ class CompanyContext(BaseModel):
     profile: Optional[CompanyProfile] = None         # сырой профиль; без него работаем только по tags и features
 
 
+ContentKind = Literal["full_text", "excerpt", "title_only"]
+
+
 class RankedNewsItem(BaseModel):
     news_id: str
     cluster_id: str
@@ -181,6 +184,7 @@ class RankedNewsItem(BaseModel):
     published_at: datetime
     tags: list[str] = Field(default_factory=list)
     rerank_score: float = Field(default=0.0, ge=0, le=1)
+    content_kind: ContentKind = "full_text"          # excerpt / title_only: статья не скачана, есть только анонс
 
 
 class BankMaterialRef(BaseModel):
@@ -269,6 +273,7 @@ class SourceRef(BaseModel):
     title: str
     url: str
     ref_id: str = ""                                 # news_id или doc_id: связывает EvidenceRef.ref_id с источником
+    content_kind: ContentKind = "full_text"
 
 
 class SectorImpact(BaseModel):
