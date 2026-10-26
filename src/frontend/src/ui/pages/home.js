@@ -1,4 +1,6 @@
 import { h, icon } from "../dom.js";
+import { config } from "../../config.js";
+import { findCompany, formatRubles } from "../../auth/directory.js";
 
 /** Figma 01: static summary of the fictional client. Only the assistant is interactive. */
 export function renderHomePage() {
@@ -26,21 +28,43 @@ const TASKS = [
   { title: "Принять предложение", count: 3 },
 ];
 
+/** Account figures of the signed-in demo company; null for ids outside the demo directory. */
+function summarizeAccounts(company) {
+  if (!company) return null;
+  const isForeign = (account) => /\b(?!RUB\b)[A-Z]{3}$/.test(account.name);
+  const ruble = company.accounts.filter((account) => !isForeign(account));
+  const foreign = company.accounts.filter(isForeign);
+  const rubleTotal = ruble.reduce((sum, account) => sum + account.balance_rub, 0);
+  return {
+    amount: `${new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2 }).format(rubleTotal)} RUB`,
+    foreign: foreign.map((account) => `${account.name.split(" ").pop()} · ${formatRubles(account.balance_rub)} экв.`),
+    hint: `${ruble.length} в рублях, ${foreign.length} в валюте`,
+  };
+}
+
+const LEGACY_BALANCE = {
+  amount: "1 248 300,00 RUB",
+  overdraft: "↳ 1 810 300,00 RUB с овердрафтом",
+  foreign: ["4 000,00 CNY", "40 000,00 KZT"],
+  extra: "+2",
+  hint: "8 в рублях, 2 в валюте",
+};
+
 function renderBalanceBlock() {
+  const summary = summarizeAccounts(findCompany(config.companyId));
   const balance = h(
     "div",
     { class: "glass-card balance" },
     h(
       "div",
       {},
-      h("p", { class: "balance__amount" }, "1 248 300,00 RUB"),
-      h("p", { class: "balance__sub" }, "↳ 1 810 300,00 RUB с овердрафтом"),
+      h("p", { class: "balance__amount" }, summary?.amount ?? LEGACY_BALANCE.amount),
+      !summary && h("p", { class: "balance__sub" }, LEGACY_BALANCE.overdraft),
       h(
         "div",
         { class: "balance__currencies" },
-        h("span", {}, "4 000,00 CNY"),
-        h("span", {}, "40 000,00 KZT"),
-        h("span", { class: "glass-pill" }, "+2"),
+        (summary?.foreign ?? LEGACY_BALANCE.foreign).map((text) => h("span", {}, text)),
+        !summary && h("span", { class: "glass-pill" }, LEGACY_BALANCE.extra),
       ),
     ),
     h(
@@ -57,7 +81,7 @@ function renderBalanceBlock() {
         "div",
         { class: "shortcut" },
         h("span", { class: "shortcut__icon" }, icon("accounts", 18)),
-        h("div", {}, h("p", {}, "Счета"), h("p", { class: "shortcut__hint" }, "8 в рублях, 2 в валюте")),
+        h("div", {}, h("p", {}, "Счета"), h("p", { class: "shortcut__hint" }, summary?.hint ?? LEGACY_BALANCE.hint)),
       ),
       h("div", { class: "shortcut" }, h("span", { class: "shortcut__icon" }, icon("plus-dark", 18)), "Заказать бизнес-карту"),
     ),

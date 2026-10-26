@@ -12,10 +12,29 @@ const SETTINGS_KEY = "alfa-insights-mock";
 const LATENCY_MS = { normal: 650, empty: 500, error: 700, slow: 3500 };
 const CHAT_LATENCY_MS = 1400;
 
-export function createMockClient() {
+/** Short per-role angle appended to `for_you`, so switching the employee is visible in mock mode. */
+const ROLE_ANGLE = {
+  owner: "Для собственника: влияет на стоимость и устойчивость бизнеса.",
+  ceo: "Для директора: учтите в планах на квартал.",
+  cfo: "Для финансового директора: проверьте план движения денег.",
+  treasurer: "Для казначея: следите за ликвидностью на счетах.",
+  chief_accountant: "Для главбуха: проверьте учёт и сроки отчётности.",
+  procurement: "Для закупок: пересмотрите условия с поставщиками.",
+  sales: "Для продаж: обсудите условия с ключевыми покупателями.",
+};
+
+function personalise(banners, role) {
+  const angle = ROLE_ANGLE[role];
+  if (!angle) return banners;
+  return banners.map((banner) => (banner.for_you ? { ...banner, for_you: `${banner.for_you} ${angle}` } : banner));
+}
+
+export function createMockClient({ role = null } = {}) {
   const settings = loadSettings();
-  let banners = createInitialBanners();
-  let pushQueue = createPushQueue();
+  const seedBanners = () => personalise(createInitialBanners(), role);
+  const seedPushQueue = () => personalise(createPushQueue(), role);
+  let banners = seedBanners();
+  let pushQueue = seedPushQueue();
   const hiddenIds = new Set();
   const streamListeners = new Set();
 
@@ -88,8 +107,8 @@ export function createMockClient() {
       return pushQueue.length > 0;
     },
     reset() {
-      banners = createInitialBanners();
-      pushQueue = createPushQueue();
+      banners = seedBanners();
+      pushQueue = seedPushQueue();
       hiddenIds.clear();
     },
   };

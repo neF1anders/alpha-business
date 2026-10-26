@@ -14,13 +14,19 @@ export class ApiError extends Error {
 
 const MAX_SSE_FAILURES_BEFORE_POLLING = 3;
 
-export function createHttpClient({ apiBase, companyId, pollIntervalMs }) {
+export function createHttpClient({ apiBase, companyId, role = null, pollIntervalMs }) {
   const root = `${apiBase}/api/companies/${encodeURIComponent(companyId)}`;
+
+  /** Appends the optional `role` audience param to a path that may already have a query. */
+  const withRole = (path) => {
+    if (!role) return path;
+    return `${path}${path.includes("?") ? "&" : "?"}role=${encodeURIComponent(role)}`;
+  };
 
   async function request(path, { method = "GET", body } = {}) {
     let response;
     try {
-      response = await fetch(`${root}${path}`, {
+      response = await fetch(`${root}${withRole(path)}`, {
         method,
         headers: body === undefined ? {} : { "Content-Type": "application/json" },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -44,7 +50,7 @@ export function createHttpClient({ apiBase, companyId, pollIntervalMs }) {
     dismiss: (bannerId) => request(`/signals/${encodeURIComponent(bannerId)}/dismiss`, { method: "POST" }),
     ask: ({ question, bannerId }) =>
       request("/chat", { method: "POST", body: bannerId ? { question, banner_id: bannerId } : { question } }),
-    subscribe: (handlers) => subscribeToStream(`${root}/signals/stream`, handlers, pollIntervalMs),
+    subscribe: (handlers) => subscribeToStream(`${root}${withRole("/signals/stream")}`, handlers, pollIntervalMs),
   };
 }
 

@@ -1,15 +1,31 @@
 import { h, icon } from "../dom.js";
 import { createInlineInsight } from "../../assistant/ui/inline-insight.js";
 import { renderQuickActions } from "./home.js";
+import { config } from "../../config.js";
+import { findCompany } from "../../auth/directory.js";
+
+/** Counterparty rows of the signed-in demo company: name, sector and trade direction. */
+function demoCounterparties() {
+  const groups = findCompany(config.companyId)?.counterparties ?? [];
+  return groups.flatMap(({ names, sector, direction }) => names.slice(0, 1).map((name) => ({ name, sector, direction })));
+}
 
 /** Figma 06 / 06b: "Последние платежи" with the insight strip above the rows. */
 export function renderPaymentsPage({ store, service }) {
-  const rows = [
-    ["ООО «Ритейл-Юг» (демо)", "Входящий", "+ 12 400 000 ₽"],
-    ["АО «СтальПоставка» (демо)", "Исходящий", "– 8 150 000 ₽"],
-    ["Лизинговая компания (демо)", "Исходящий", "– 2 060 000 ₽"],
-    ["ООО «Север-Логистика» (своя группа)", "Внутренний", "– 5 000 000 ₽"],
-  ];
+  const amounts = ["12 400 000", "8 150 000", "2 060 000", "5 000 000"];
+  const partners = demoCounterparties().slice(0, amounts.length);
+  const rows = partners.length
+    ? partners.map(({ name, direction }, index) =>
+        direction === "buyer"
+          ? [name, "Входящий", `+ ${amounts[index]} ₽`]
+          : [name, "Исходящий", `– ${amounts[index]} ₽`],
+      )
+    : [
+        ["ООО «Ритейл-Юг» (демо)", "Входящий", "+ 12 400 000 ₽"],
+        ["АО «СтальПоставка» (демо)", "Исходящий", "– 8 150 000 ₽"],
+        ["Лизинговая компания (демо)", "Исходящий", "– 2 060 000 ₽"],
+        ["ООО «Север-Логистика» (своя группа)", "Внутренний", "– 5 000 000 ₽"],
+      ];
   return [
     h("h1", { class: "page-title" }, "Платежи"),
     h(
@@ -32,11 +48,14 @@ export function renderPaymentsPage({ store, service }) {
 
 /** Figma 07: the strip replaces the promo line between "Мои контрагенты" and search. */
 export function renderCounterpartiesPage({ store, service }) {
-  const rows = [
-    ["Лизинговая компания (демо)", "г. Москва", "•• 0042", "ИНН 770000••••"],
-    ["ООО «Ритейл-Юг» (демо)", "г. Краснодар", "•• 0118", "ИНН 230000••••"],
-    ["АО «СтальПоставка» (демо)", "г. Липецк", "•• 0207", "ИНН 480000••••"],
-  ];
+  const partners = demoCounterparties().slice(0, 6);
+  const rows = partners.length
+    ? partners.map(({ name, sector }, index) => [name, sector, `•• ${String(42 + index * 76).padStart(4, "0")}`, "ИНН скрыт"])
+    : [
+        ["Лизинговая компания (демо)", "г. Москва", "•• 0042", "ИНН 770000••••"],
+        ["ООО «Ритейл-Юг» (демо)", "г. Краснодар", "•• 0118", "ИНН 230000••••"],
+        ["АО «СтальПоставка» (демо)", "г. Липецк", "•• 0207", "ИНН 480000••••"],
+      ];
   return [
     h("h1", { class: "page-title" }, "Контрагенты"),
     h("section", { class: "cp-hero" }, h("span", { class: "cp-hero__icon" }, icon("nav-users", 18)), "Мои контрагенты"),
