@@ -27,6 +27,18 @@ class RerankerTests(unittest.TestCase):
         no_credit = CompanyProfile("U_2", "trade-mid", PROFILE.tags - {"product:credit"})
         self.assertGreater(with_credit, self.rank([news(1, {"factor:key_rate"})], no_credit)[0].score)
 
+    def test_role_lens_reorders_only_with_explicit_role(self):
+        no_credit = CompanyProfile("U_2", "trade-mid", PROFILE.tags - {"product:credit"})
+        items = [news(1, {"factor:key_rate"}), news(2, {"sector:trade"})]
+        self.assertEqual(self.rank(items, no_credit)[0].item.news_id, "n1")
+        sales = self.rank(items, no_credit.with_role("sales"))
+        self.assertEqual(sales[0].item.news_id, "n2")
+        self.assertIn("role_focus=sales:sector:trade", sales[0].reasons)
+
+    def test_explicit_role_gets_its_own_audience(self):
+        self.assertEqual(PROFILE.audience_id, PROFILE.company_id)
+        self.assertEqual(PROFILE.with_role("ceo").audience_id, f"{PROFILE.company_id}~ceo")
+
     def test_fresh_and_primary_source_win_ties(self):
         old = news(1, {"factor:key_rate"}, days=30)
         fresh = news(2, {"factor:key_rate"}, days=0)
