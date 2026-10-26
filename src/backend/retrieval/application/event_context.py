@@ -12,7 +12,7 @@ from orchestrator.domain.models import BankMaterial, EventContext
 from orchestrator.domain.ranking import TagReranker
 
 from ..domain.bank_materials import bank_materials
-from ..domain.event_rules import PROFILE_HINTS, TOPICS, validate
+from ..domain.event_rules import TOPICS, validate
 from ..domain.query import natural_query
 from ..domain.search_rules import phrase_query, rules_for
 from .ports import NewsSearchStore, ReportFileCatalog
@@ -36,19 +36,19 @@ async def build_event_context(session, report_files: ReportFileCatalog, event, p
     scored = TagReranker(min_score=0, min_relevance=0).rerank(profile,[annotated],1,
                                 require_tag_match=False,now=as_of)[0]
     matched = tuple(sorted(event_tags & profile.tags))
-    hints = [value for tag,value in PROFILE_HINTS.items() if tag in profile.tags]
     trace = dict(as_of=as_of.isoformat(), published_at=event.published_at.isoformat(),
                  classification_input='headline_and_first_800_characters',
                  bank_text_alpha_ratio_min=0.65, ranking='topic_document_then_term_coverage',
-                 profile_hints=hints, company_signal_type='heuristic_not_impact_probability',
+                 bank_query_scope='event_topics_only', company_signal_type='heuristic_not_impact_probability',
                  evidence_role='dated_background_not_current_bank_verdict',
-                 rules_version='event_lexical_v2', query=None, anchor=None)
+                 rules_version='event_lexical_v3', query=None, anchor=None)
     materials = ()
     status = 'no_supported_topic'
     if topics:
         anchor = phrase_query([phrase for t in topics for phrase in TOPICS[t]])
-        query = natural_query(' '.join(phrase for t in topics for phrase in TOPICS[t])
-                              + ' ' + ' '.join(hints))[:2000]
+        # Only the event decides the bank query: the cluster summary built from these materials
+        # is cached once for every company, so a profile term here would leak into other clients.
+        query = natural_query(' '.join(phrase for t in topics for phrase in TOPICS[t]))[:2000]
         trace.update(query=query,anchor=anchor)
         rows = await session.fetch_bank_chunks(query=query,anchor=anchor,as_of=as_of.date(),
                                                since=as_of.date()-timedelta(days=365),limit=limit)

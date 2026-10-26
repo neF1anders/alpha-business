@@ -54,8 +54,10 @@ class EventDatabaseTests(unittest.IsolatedAsyncioTestCase):
         control=await r.retrieve(event(),replace(PROFILE,company_id='control',tags=frozenset()),as_of=NOW)
         self.assertEqual(borrower.topics,('policy_rate',))
         self.assertGreater(borrower.heuristic_score,control.heuristic_score)
-        self.assertEqual(borrower.trace['profile_hints'],['кредит'])
-        self.assertEqual(control.trace['profile_hints'],[])
+        # Bank background belongs to the event: both companies get the same query and materials,
+        # because the cluster summary built from them is shared by all clients.
+        self.assertEqual(borrower.trace['query'],control.trace['query'])
+        self.assertEqual(borrower.bank_materials,control.bank_materials)
         self.assertEqual(len(borrower.bank_materials),1)
         material=borrower.bank_materials[0]
         self.assertEqual(material.news_ids,('unseen-external-event',))

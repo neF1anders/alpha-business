@@ -1,4 +1,4 @@
-"""Event -> bank context rules: topic anchors, profile hints and input validation."""
+"""Event -> bank context rules: topic anchors and input validation."""
 from datetime import datetime
 
 from orchestrator.domain.models import CompanyProfile, NewsItem
@@ -18,9 +18,6 @@ TOPICS = {
     'transport': ('грузоперевозки', 'грузовые перевозки', 'фрахт'),
     'datacenters': ('дата-центр', 'центр обработки данных', 'ЦОД'),
 }
-PROFILE_HINTS = {'product:credit': 'кредит', 'product:leasing': 'лизинг',
-                 'product:factoring': 'факторинг', 'product:deposit': 'депозит'}
-# Do not infer borrowing from sector/size or foreign-currency exposure from FTS.
 
 
 def validate(event, profile, as_of, limit):
