@@ -8,7 +8,7 @@ from orchestrator.domain.errors import DependencyUnavailable
 from orchestrator.domain.models import NewsItem,RetrievalResult,SourceKind
 from orchestrator.domain.news_quality import historical_retrospective
 
-from ..domain.headlines import headline_cluster_id
+from ..domain.headlines import event_cluster_id
 from ..domain.needs import balanced_candidates,monitoring_queries,profile_context_queries
 from .ports import ActivityCatalog
 
@@ -82,7 +82,7 @@ class LocalFeedRetriever:
             if d in sparse:
                 result.append(replace(sparse[d],retrieval_score=1/rank));continue
             n=self.index.documents[d]
-            result.append(NewsItem(news_id=d,cluster_id=headline_cluster_id(n['title'],n['published_at']),
+            result.append(NewsItem(news_id=d,cluster_id=event_cluster_id(n['title'],n['published_at']),
                 title=n['title'],text=n['text'],url=n['url'],published_at=n['published_at'],
                 source_kind=SourceKind(n['source_kind']),retrieval_score=1/rank))
         return RetrievalResult(tuple(result))

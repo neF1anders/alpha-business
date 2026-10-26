@@ -9,11 +9,22 @@ from pathlib import Path
 
 from orchestrator.domain.models import CompanyProfile, NewsItem, RetrievalResult, SourceKind
 
-from ..domain.headlines import headline_cluster_id
+from ..domain.headlines import event_cluster_id, headline_cluster_id
 from ..domain.query import natural_query
 from ..domain.search_rules import rules_for
 from .event_context import build_event_context
 from .ports import NewsSearchStore, ReportFileCatalog
+
+
+MAX_ARTICLES_PER_EVENT = 3
+
+
+def event_leads(news):
+    """First (best-scored) article of each event, in retrieval order."""
+    leads = {}
+    for item in news:
+        leads.setdefault(item.cluster_id, item)
+    return list(leads.values())
 
 
 class NewsSearch:
@@ -58,25 +69,29 @@ class NewsSearch:
                         as_of=as_of, since=since, candidate_limit=min(max(query.limit*5, 50), 300),
                         tags=sorted(query.tags), tag_count=sum(r['tag'] in query.tags for r in rules),
                         chat=query.question is not None)
-                    news, seen = [], set()
+                    news, members, headlines = [], {}, set()
                     for row in rows:
-                        # Conservative duplicate suppression, not semantic event clustering.
-                        cluster_id = headline_cluster_id(row['title'], row['published_at'])
-                        if cluster_id in seen:
+                        headline = headline_cluster_id(row['title'], row['published_at'])
+                        if headline in headlines:          # a reprint adds nothing to the summary
                             continue
-                        seen.add(cluster_id)
+                        cluster_id = event_cluster_id(row['title'], row['published_at'])
+                        if cluster_id not in members and len(members) == query.limit:
+                            continue
+                        # Siblings ride along for the summary; the limit counts events, not articles.
+                        if len(members.setdefault(cluster_id, [])) == MAX_ARTICLES_PER_EVENT:
+                            continue
+                        members[cluster_id].append(row['news_id'])
+                        headlines.add(headline)
                         news.append(NewsItem(news_id=row['news_id'],cluster_id=cluster_id,title=row['title'],
                             text=row['text'],url=row['url'],published_at=row['published_at'],
                             source_kind=SourceKind(row['source_kind']),tags=frozenset(row['tags']),
                             retrieval_score=float(row['score'])))
-                        if len(news) == query.limit:
-                            break
                     bank = await self._bank(session, news, as_of) if news and self.bank_enabled else ()
                     return RetrievalResult(news=tuple(news), bank_materials=bank)
 
     async def _bank(self, session, news, as_of):
         merged = {}
-        for event in news[:3]:
+        for event in event_leads(news)[:3]:
             context = await build_event_context(session, self.report_files, event,
                                                 CompanyProfile('legacy','legacy',frozenset()),
                                                 as_of=as_of,limit=2,reports_root=self.reports_root)

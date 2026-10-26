@@ -15,8 +15,8 @@ from typing import Awaitable, Callable, Optional, TypeVar
 
 from ..domain.errors import CompanyNotFound, DependencyUnavailable
 from ..domain.models import (
-    Banner, BankMaterial, BudgetTier, ChatAnswer, ChatTurn, Claim, CompanyDossier, CompanyProfile, Mode, NewsQuery,
-    RankedNews, Severity, SourceRef, SummaryRequest, TraceStep, audience_id, follow_up_search_text, raw_banner_id,
+    Banner, BankMaterial, BudgetTier, ChatAnswer, ChatTurn, Claim, CompanyDossier, CompanyProfile, Mode, NewsItem,
+    NewsQuery, RankedNews, Severity, SourceRef, SummaryRequest, TraceStep, audience_id, follow_up_search_text, raw_banner_id,
     recent_history, utcnow,
 )
 from ..domain.profile_rules import counterparty_search_tags
@@ -98,6 +98,21 @@ class _Found:
     ranked: list[RankedNews] = field(default_factory=list)
     bank: tuple[BankMaterial, ...] = ()
     dossier: Optional[CompanyDossier] = None
+    events: dict[str, tuple[NewsItem, ...]] = field(default_factory=dict)   # cluster_id -> статьи события
+
+    def with_siblings(self, ranked: RankedNews) -> tuple[RankedNews, ...]:
+        """Выбранная новость первой, за ней другие статьи того же события: саммари строится по событию."""
+        siblings = tuple(RankedNews(item, ranked.score, ranked.matched_tags)
+                         for item in self.events.get(ranked.item.cluster_id, ())
+                         if item.news_id != ranked.item.news_id)
+        return (ranked, *siblings)
+
+
+def _events(news: tuple[NewsItem, ...]) -> dict[str, tuple[NewsItem, ...]]:
+    grouped: dict[str, list[NewsItem]] = {}
+    for item in news:
+        grouped.setdefault(item.cluster_id, []).append(item)
+    return {cluster: tuple(items) for cluster, items in grouped.items()}
 
 
 class _Pipeline:
@@ -200,7 +215,7 @@ class _Pipeline:
                     bank = ()
                     info.update(bank_materials=0,unavailable=True)
                     trace.degrade(str(exc))
-        return _Found(profile, ranked, bank)
+        return _Found(profile, ranked, bank, events=_events(result.news))
 
     async def _contexts(self, ranked, profile):
         # Cancel siblings on failure; do not leave database requests in background.
@@ -239,7 +254,8 @@ class GetBanners(_Pipeline):
 
         req = self._request(trace, Mode.BANNER, found, None, BudgetTier.FULL)
         with trace.step("summary_branch", news=len(found.ranked)) as info:
-            outcomes = await asyncio.gather(*(self._banner_for(req, ranked, deadline) for ranked in found.ranked))
+            outcomes = await asyncio.gather(*(self._banner_for(req, found.with_siblings(ranked), deadline)
+                                         for ranked in found.ranked))
             late = [banner for banner, failure in outcomes if failure]
             for reason in dict.fromkeys(failure for _, failure in outcomes if failure):
                 trace.degrade(reason)
@@ -247,12 +263,16 @@ class GetBanners(_Pipeline):
             info.update(banners=len(banners), raw_fallback=len(late))
         return self._result(trace, tuple(banners))
 
-    async def _banner_for(self, req: SummaryRequest, ranked: RankedNews,
+    async def _banner_for(self, req: SummaryRequest, event: tuple[RankedNews, ...],
                           deadline: Deadline) -> tuple[Optional[Banner], str]:
-        """(баннер или None, причина деградации). Ошибка и таймаут ветки дают баннер «только новость»."""
-        news_id = ranked.item.news_id
-        bank = tuple(m for m in req.bank_materials if not m.news_ids or news_id in m.news_ids)
-        one = replace(req, news=(ranked,), bank_materials=bank)
+        """(баннер или None, причина деградации). Ошибка и таймаут ветки дают баннер «только новость».
+
+        `event` — выбранная новость и другие статьи её события; баннер один на событие.
+        """
+        ranked = event[0]
+        news_ids = {r.item.news_id for r in event}
+        bank = tuple(m for m in req.bank_materials if not m.news_ids or news_ids & set(m.news_ids))
+        one = replace(req, news=event, bank_materials=bank)
         try:
             return await self._call("summary_branch", self._branch.banner(one), deadline.remaining()), ""
         except DependencyUnavailable as exc:
