@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import random
 import re
+import zlib
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -106,6 +107,51 @@ def _good_trim(draft: dict, req: SummaryRequest, rng: random.Random) -> Optional
     return draft
 
 
+# Расширенный набор порчи: проверяет правила направления, единиц и названий. Не входит в исходные 117 черновиков.
+_DIRECTION_FLIPS = (("снизились", "выросли"), ("выросли", "снизились"), ("снизилась", "выросла"),
+                    ("выросла", "снизилась"), ("снизился", "вырос"), ("вырос", "снизился"), ("снизил", "повысил"),
+                    ("повысил", "снизил"), ("поднялся", "опустился"), ("опустился", "поднялся"),
+                    ("упала", "выросла"), ("упал", "вырос"), ("замедлилась", "ускорилась"),
+                    ("ускорился", "замедлился"), ("ниже", "выше"), ("выше", "ниже"), ("сократил", "увеличил"))
+_UNIT_SWAPS = ((" трлн", " млрд"), (" млрд", " млн"), (" млн", " тыс."), (" тыс.", " млн"), (" тысяч", " миллионов"),
+               (" п.п.", "%"), (" процентный пункт", "%"), ("%", " п.п."))
+_FOREIGN_ENTITIES = (", сообщил Сбербанк", " по данным Bloomberg", " по оценке агентства «Эксперт РА»")
+
+
+def _checked_claims(draft: dict) -> list[dict]:
+    return [c for c in draft["claims"] if c["type"] in ("fact", "bank")]
+
+
+def _direction_flip(draft: dict, req: SummaryRequest, rng: random.Random) -> Optional[dict]:
+    for claim in _checked_claims(draft):
+        for src, dst in _DIRECTION_FLIPS:
+            if re.search(rf"\b{src}\b", claim["text"]):   # по границам слов: «ниже» не должно портить «снижения»
+                claim["text"] = re.sub(rf"\b{src}\b", dst, claim["text"], count=1)
+                return draft
+    return None
+
+
+def _unit_swap(draft: dict, req: SummaryRequest, rng: random.Random) -> Optional[dict]:
+    for claim in _checked_claims(draft):
+        for src, dst in _UNIT_SWAPS:
+            if re.search(rf"\d{re.escape(src)}", claim["text"]):
+                claim["text"] = re.sub(rf"(\d){re.escape(src)}", lambda m: m.group(1) + dst, claim["text"], count=1)
+                return draft
+    return None
+
+
+def _foreign_entity(draft: dict, req: SummaryRequest, rng: random.Random) -> Optional[dict]:
+    suffix = _FOREIGN_ENTITIES[zlib.crc32(req.news[0].news_id.encode()) % len(_FOREIGN_ENTITIES)]
+    next(c for c in draft["claims"] if c["type"] == "fact")["text"] += suffix
+    return draft
+
+
+EXTENDED_PERTURBATIONS: dict[str, tuple[bool, Callable]] = {
+    "направление_инверсия": (False, _direction_flip),
+    "единицы_подменены": (False, _unit_swap),
+    "чужая_сущность": (False, _foreign_entity),
+}
+
 # Чужие предложения для подмены: заполняется в build_cases из других тем.
 FOREIGN_SENTENCES: dict[str, str] = {}
 
@@ -122,7 +168,9 @@ PERTURBATIONS: dict[str, tuple[bool, Callable]] = {
 }
 
 
-def build_cases(seed: int = 7) -> list[DraftCase]:
+def build_cases(seed: int = 7, extended: bool = False) -> list[DraftCase]:
+    """extended=False воспроизводит исходные 155 случаев (38 честных и 117 испорченных); True добавляет EXTENDED_PERTURBATIONS."""
+    perturbations = {**PERTURBATIONS, **EXTENDED_PERTURBATIONS} if extended else PERTURBATIONS
     rng = random.Random(seed)
     news_rows, companies, bank = load_news(), load_companies(), load_bank()
     topic_of_doc = load_bank_topics()
@@ -140,7 +188,7 @@ def build_cases(seed: int = 7) -> list[DraftCase]:
         req = SummaryRequest(trace_id=f"off-{row.item.news_id}", mode=Mode.BANNER, company=company.company,
                              news=cluster, bank_materials=banks_for(row, bank, topic_of_doc))
         base = honest_draft(req)
-        for kind, (valid, fn) in PERTURBATIONS.items():
+        for kind, (valid, fn) in perturbations.items():
             draft = fn(copy.deepcopy(base), req, rng)
             if draft is not None:
                 cases.append(DraftCase(f"{row.item.news_id}:{kind}", kind, valid, req, draft))

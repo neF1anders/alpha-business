@@ -9,12 +9,12 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from cases import DraftCase, build_cases
+from cases import EXTENDED_PERTURBATIONS, DraftCase, build_cases
 from stats import rate
 from summary_branch.domain import scoring
 from summary_branch.application.binder import DefaultEvidenceBinder
 from summary_branch.domain.models import Decision, SummaryDraft
-from summary_branch.domain.scoring import company_confidence, content_signals, lead_from_news
+from summary_branch.domain.scoring import company_confidence, content_signals, lead_from_news, passes_validation
 
 RESULTS = Path(__file__).resolve().parents[2] / "eval" / "results" / "offline.json"
 RERANK = 0.9   # допущение: реранкер уверен в новости; релевантность здесь не исследуется
@@ -32,6 +32,10 @@ RULE_GRID = {"HIGH": [0.70, 0.75, 0.80, 0.85], "MEDIUM": [0.55], "NUMERIC_MISS_G
              "min_grounding": [0.6], **RULES}
 BASELINE = {"HIGH": 0.75, "MEDIUM": 0.55, "NUMERIC_MISS_GROUNDING": 0.4, "min_grounding": 0.6,
             "strict_numeric": False, "min_claim_lex": 0.0}
+# Правила смысла (направление, единицы, названия, вывод без опоры) добавлены позже: сравниваются отдельно от числовых.
+MEANING_OFF = {"direction": False, "unit": False, "entity": False, "inference": False}
+MEANING_ON = {key: True for key in MEANING_OFF}
+NUMERIC_RULES = {**BASELINE, "strict_numeric": True, "min_claim_lex": 0.5}
 
 
 
@@ -39,7 +43,9 @@ def evaluate(case: DraftCase, params: dict) -> dict:
     """Один черновик при заданных порогах. Константы scoring подменяются на время вызова."""
     patched = {"HIGH": params["HIGH"], "MEDIUM": params["MEDIUM"],
                "NUMERIC_MISS_GROUNDING": params["NUMERIC_MISS_GROUNDING"],
-               "STRICT_NUMERIC": params["strict_numeric"], "MIN_CLAIM_LEX": params["min_claim_lex"]}
+               "STRICT_NUMERIC": params["strict_numeric"], "MIN_CLAIM_LEX": params["min_claim_lex"],
+               "DIRECTION_CHECK": params.get("direction", False), "UNIT_CHECK": params.get("unit", False),
+               "ENTITY_CHECK": params.get("entity", False), "INFERENCE_CHECK": params.get("inference", False)}
     old = {k: getattr(scoring, k) for k in patched}
     try:
         for key, value in patched.items():
@@ -53,8 +59,7 @@ def evaluate(case: DraftCase, params: dict) -> dict:
     finally:
         for key, value in old.items():
             setattr(scoring, key, value)
-    valid = (signals.structure_ok and not signals.numeric_miss and not signals.unsupported_claim
-             and signals.grounding >= params["min_grounding"])
+    valid = passes_validation(signals, params["min_grounding"])
     score, decision = confidence.score, confidence.decision.value
     return {"valid": valid, "decision": decision, "score": score,
             "grounding": signals.grounding, "numeric_miss": signals.numeric_miss, "structure_ok": signals.structure_ok}
@@ -99,6 +104,15 @@ def by_kind(cases: list[DraftCase], params: dict) -> dict[str, dict]:
     return dict(table)
 
 
+def report(title: str, cases: list[DraftCase], configs: dict[str, dict]) -> None:
+    print(f"\n{title}: честных {sum(c.is_valid for c in cases)}, испорченных {sum(not c.is_valid for c in cases)}")
+    for name, params in configs.items():
+        m = metrics(cases, params)
+        print(f"  {name}")
+        print("    ложно принято как «высокая»:", rate(m["fa_summary"], m["bad"]))
+        print("    ложный отказ (честных не дошло до «высокой»):", rate(m["fr_summary"], m["good"]))
+
+
 def main() -> None:
     all_cases = build_cases()
     cases = eligible(all_cases)
@@ -106,14 +120,26 @@ def main() -> None:
           f"{len({c.case_id.split(':')[0] for c in all_cases})}")
     print(f"случаев: {len(cases)} (честных {sum(c.is_valid for c in cases)}, испорченных {sum(not c.is_valid for c in cases)})")
     base = metrics(cases, BASELINE)
-    print("\nПрежнее поведение (правила STRICT_NUMERIC и MIN_CLAIM_LEX выключены)", BASELINE)
-    print("  ложно принято как «высокая»:", rate(base["fa_summary"], base["bad"]))
-    print("  ложно принято с пометкой или выше:", rate(base["fa_shown"], base["bad"]))
-    print("  честных не дошло до «высокой»:", rate(base["fr_summary"], base["good"]))
-    new = metrics(cases, {**BASELINE, "strict_numeric": True, "min_claim_lex": 0.5})
-    print("\nТекущие значения scoring.py (правила включены):")
-    print("  ложно принято как «высокая»:", rate(new["fa_summary"], new["bad"]))
-    print("  честных не дошло до «высокой»:", rate(new["fr_summary"], new["good"]))
+    configs = {
+        "до числовых правил (STRICT_NUMERIC и MIN_CLAIM_LEX выключены)": BASELINE,
+        "числовые правила (STRICT_NUMERIC + MIN_CLAIM_LEX)": NUMERIC_RULES,
+        "+ правила смысла (направление, единицы, названия, вывод без опоры)": {**NUMERIC_RULES, **MEANING_ON},
+    }
+    ablation = {name: {**NUMERIC_RULES, **MEANING_OFF, key: True} for name, key in
+                (("только направление", "direction"), ("только единицы", "unit"), ("только названия", "entity"),
+                 ("только вывод без опоры", "inference"))}
+    report("Исходный набор", cases, {**configs, **ablation})
+    extended = eligible(build_cases(extended=True))
+    new_kinds = [c for c in extended if c.is_valid or c.kind in EXTENDED_PERTURBATIONS]
+    report("Новые виды порчи (направление, единицы, чужая сущность)", new_kinds,
+           {**configs, **ablation})
+    meaning = {**NUMERIC_RULES, **MEANING_ON}
+    print("\nПо видам порчи (числовые правила -> + правила смысла): n / «высокая» / «высокая» после правил смысла")
+    for kind in dict.fromkeys(c.kind for c in extended):
+        group = [c for c in extended if c.kind == kind]
+        before = sum(evaluate(c, NUMERIC_RULES)["decision"] == Decision.SHOW_SUMMARY.value for c in group)
+        after = sum(evaluate(c, meaning)["decision"] == Decision.SHOW_SUMMARY.value for c in group)
+        print(f"  {kind:22s} {len(group):3d} {before:3d} {after:3d}")
     print("\nПо видам порчи (прежнее поведение): n / «высокая» / показано / невалидно (повтор)")
     kinds = by_kind(cases, BASELINE)
     for kind, row in kinds.items():
