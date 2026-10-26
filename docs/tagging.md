@@ -16,8 +16,8 @@ docker compose run --rm ingest load-news
 PDF повторно распознавать не нужно, если готовые артефакты уже есть.
 `init-db` применяет добавочную миграцию существующей БД; старые записи сохраняются.
 
-Вне Docker установите зависимости: `uv pip install -r requirements.txt --torch-backend cpu`.
-Затем используйте `.venv/Scripts/python.exe -m ingestion` вместо
+Вне Docker установите зависимости: `uv sync --extra ml`.
+Затем используйте `uv run python -m ingestion` вместо
 `docker compose run --rm ingest`. Первый запуск скачивает модель Hugging Face;
 тексты не отправляются во внешнюю API. Параметр `--revision` позволяет закрепить
 ревизию модели. В метаданных сохраняется ревизия, доступная из модели, либо

@@ -1,0 +1,53 @@
+[project]
+name = "alpha-insights"
+version = "0.1.0"
+description = "Personal news insights for business clients inside the internet bank: banners and chat."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.136.0",
+    "numpy==2.5.4",
+    "pandas==3.1.0",
+    "psycopg[binary]==3.3.6",
+    "pydantic>=2.14.1",
+    "pymorphy3==2.0.6",
+    "pymupdf==1.28.2",
+    "python-dotenv==1.2.4",
+    "uvicorn==0.40.0",
+]
+
+[project.optional-dependencies]
+# Local embeddings, cross-encoder reranker and ingestion tagging models.
+ml = [
+    "huggingface-hub==2.3.0",
+    "safetensors==0.8.0",
+    "sentence-transformers==6.2.0",
+    "torch==2.14.1",
+    "transformers==5.20.2",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = "src/backend"
+module-name = ["evaluation", "ingestion", "orchestrator", "retrieval", "summary_branch"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+pythonpath = ["tests", "."]
+testpaths = ["tests"]

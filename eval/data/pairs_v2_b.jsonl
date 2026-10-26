@@ -1,0 +1,280 @@
+{"news_id": "n01", "company_id": "k11", "relevance": 2, "reason": "Продукт loan: снижение ставки с 15,0% до 14,0% прямо удешевляет обслуживание долга."}
+{"news_id": "n01", "company_id": "k12", "relevance": 2, "reason": "Продукт loan: решение ЦБ меняет стоимость заимствований компании."}
+{"news_id": "n01", "company_id": "k13", "relevance": 1, "reason": "Статус prospect, продукты неизвестны; общая новость по ставке полезна владельцу розницы."}
+{"news_id": "n01", "company_id": "k14", "relevance": 2, "reason": "Продукт loan у клиента: снижение ключевой ставки прямо влияет на стоимость кредита."}
+{"news_id": "n01", "company_id": "k15", "relevance": 1, "reason": "Продукты payroll и rko, кредита нет; новость общая для финдиректора."}
+{"news_id": "n01", "company_id": "k16", "relevance": 2, "reason": "Строительство очень чувствительно к стоимости денег; есть продукт guarantee."}
+{"news_id": "n01", "company_id": "k17", "relevance": 1, "reason": "Статус prospect; ВЭД с Турцией, ставка напрямую не влияет, макроновость полезна."}
+{"news_id": "n01", "company_id": "k18", "relevance": 2, "reason": "Продукт deposit: снижение ставки уменьшает доходность депозита, а аренда недвижимости чувствительна к ставкам."}
+{"news_id": "n01", "company_id": "k19", "relevance": 1, "reason": "Продуктов нет, IT-разработка; ставка влияет косвенно через бюджеты клиентов."}
+{"news_id": "n01", "company_id": "k20", "relevance": 1, "reason": "Статус prospect, быстрый рост; ставка косвенно влияет на оборотный капитал."}
+{"news_id": "n02", "company_id": "k11", "relevance": 1, "reason": "Линии для малого бизнеса; при штате более 251 эффект косвенный."}
+{"news_id": "n02", "company_id": "k12", "relevance": 2, "reason": "Продукт loan, штат 16-100: кредитные линии МСП подешевеют примерно на 1,5 п.п."}
+{"news_id": "n02", "company_id": "k13", "relevance": 1, "reason": "Статус prospect; при будущем овердрафте условия станут дешевле, но кредита сейчас нет."}
+{"news_id": "n02", "company_id": "k14", "relevance": 2, "reason": "Продукт loan, штат до 15: ставка по кредитным линиям малого бизнеса снизится примерно на 1,5 п.п."}
+{"news_id": "n02", "company_id": "k15", "relevance": 1, "reason": "Кредита нет (payroll, rko); новость про овердрафты косвенно интересна."}
+{"news_id": "n02", "company_id": "k16", "relevance": 2, "reason": "Строительство чувствительно к стоимости кредитных линий; есть guarantee и rko."}
+{"news_id": "n02", "company_id": "k17", "relevance": 1, "reason": "Статус prospect; оптовая база с малым штатом, эффект косвенный."}
+{"news_id": "n02", "company_id": "k18", "relevance": 1, "reason": "Кредита нет (deposit, rko); косвенная связь через рынок недвижимости."}
+{"news_id": "n02", "company_id": "k19", "relevance": 0, "reason": "Продуктов кредита нет, IT-разработка не зависит от овердрафтов."}
+{"news_id": "n02", "company_id": "k20", "relevance": 1, "reason": "Статус prospect; возможное удешевление оборотного кредита, условия неизвестны."}
+{"news_id": "n03", "company_id": "k11", "relevance": 1, "reason": "Прогноз аналитиков, не факт; возможное снижение ставки косвенно важно для кредита (loan)."}
+{"news_id": "n03", "company_id": "k12", "relevance": 1, "reason": "Прогноз ниже 13% возможен только при снижении инфляции; для loan-клиента это пока гипотеза."}
+{"news_id": "n03", "company_id": "k13", "relevance": 0, "reason": "Статус prospect; прогноз по ставке не меняет операции розничного магазина."}
+{"news_id": "n03", "company_id": "k14", "relevance": 1, "reason": "Продукт loan; прогноз снижения ставки пока гипотетичен."}
+{"news_id": "n03", "company_id": "k15", "relevance": 0, "reason": "Продукты payroll и rko, кредита нет; прогноз ставки кофейню не затрагивает."}
+{"news_id": "n03", "company_id": "k16", "relevance": 1, "reason": "Строительство чувствительно к ставке, но прогноз неопределённый."}
+{"news_id": "n03", "company_id": "k17", "relevance": 0, "reason": "Статус prospect; прогноз ставки не связан с деятельностью оптовой базы."}
+{"news_id": "n03", "company_id": "k18", "relevance": 1, "reason": "Продукт deposit; прогноз снижения ставки косвенно влияет на доходность депозита."}
+{"news_id": "n03", "company_id": "k19", "relevance": 0, "reason": "Продуктов нет; прогноз ставки IT-компанию не затрагивает."}
+{"news_id": "n03", "company_id": "k20", "relevance": 0, "reason": "Статус prospect; прогноз ставки не меняет условия маркетплейса."}
+{"news_id": "n04", "company_id": "k11", "relevance": 0, "reason": "ВЭД отсутствует (нет foreign_trade), юань для компании не важен."}
+{"news_id": "n04", "company_id": "k12", "relevance": 0, "reason": "ВЭД с Казахстаном, юань с Китаем в её контрактах не участвует."}
+{"news_id": "n04", "company_id": "k13", "relevance": 0, "reason": "Розница без ВЭД, юань не касается."}
+{"news_id": "n04", "company_id": "k14", "relevance": 0, "reason": "Розница без ВЭД, юань не касается."}
+{"news_id": "n04", "company_id": "k15", "relevance": 0, "reason": "Кофейня без ВЭД, юань не касается."}
+{"news_id": "n04", "company_id": "k16", "relevance": 0, "reason": "Строительство без ВЭД с Китаем."}
+{"news_id": "n04", "company_id": "k17", "relevance": 0, "reason": "ВЭД с Турцией, юань с Китаем не связан."}
+{"news_id": "n04", "company_id": "k18", "relevance": 0, "reason": "Аренда недвижимости, валютных операций нет."}
+{"news_id": "n04", "company_id": "k19", "relevance": 0, "reason": "ВЭД нет, IT-услуги."}
+{"news_id": "n04", "company_id": "k20", "relevance": 2, "reason": "ВЭД с Китаем: рост юаня до 12,5 рубля и спрос импортёров на валюту прямо удорожают закупки."}
+{"news_id": "n05", "company_id": "k11", "relevance": 0, "reason": "ВЭД нет, котировка юаня компании не касается."}
+{"news_id": "n05", "company_id": "k12", "relevance": 0, "reason": "ВЭД с Казахстаном, котировка юаня не относится к её расчётам."}
+{"news_id": "n05", "company_id": "k13", "relevance": 0, "reason": "Розница без ВЭД."}
+{"news_id": "n05", "company_id": "k14", "relevance": 0, "reason": "Розница без ВЭД."}
+{"news_id": "n05", "company_id": "k15", "relevance": 0, "reason": "Кофейня без ВЭД."}
+{"news_id": "n05", "company_id": "k16", "relevance": 0, "reason": "Строительство без ВЭД с Китаем."}
+{"news_id": "n05", "company_id": "k17", "relevance": 0, "reason": "ВЭД с Турцией, юань не связан."}
+{"news_id": "n05", "company_id": "k18", "relevance": 0, "reason": "Аренда недвижимости, валюты не касается."}
+{"news_id": "n05", "company_id": "k19", "relevance": 0, "reason": "ВЭД нет, IT-услуги."}
+{"news_id": "n05", "company_id": "k20", "relevance": 1, "reason": "ВЭД с Китаем: котировка юаня релевантна, но это рыночная статистика без прямого события."}
+{"news_id": "n06", "company_id": "k11", "relevance": 2, "reason": "Штат более 251: рост занятости и безработица 2,3% меняют условия найма и затраты на персонал."}
+{"news_id": "n06", "company_id": "k12", "relevance": 1, "reason": "Штат 16-100: рынок труда влияет на найм водителей, эффект средний."}
+{"news_id": "n06", "company_id": "k13", "relevance": 0, "reason": "Штат менее 15 человек: новость о рынке труда не меняет затраты."}
+{"news_id": "n06", "company_id": "k14", "relevance": 0, "reason": "Штат менее 15 человек: эффект рынка труда незначителен."}
+{"news_id": "n06", "company_id": "k15", "relevance": 1, "reason": "Штат 16-100, зарплатный продукт: рынок труда влияет на персонал кофейни."}
+{"news_id": "n06", "company_id": "k16", "relevance": 1, "reason": "Штат 16-100: рынок труда косвенно влияет на стройку."}
+{"news_id": "n06", "company_id": "k17", "relevance": 0, "reason": "Штат менее 15 человек."}
+{"news_id": "n06", "company_id": "k18", "relevance": 0, "reason": "Штат менее 15 человек."}
+{"news_id": "n06", "company_id": "k19", "relevance": 2, "reason": "Штат 101-250: рост занятости меняет конкуренцию за IT-кадры и их стоимость."}
+{"news_id": "n06", "company_id": "k20", "relevance": 1, "reason": "Штат 16-100, быстрый рост: найм курьеров и складских сотрудников."}
+{"news_id": "n07", "company_id": "k11", "relevance": 2, "reason": "Складская логистика (52.10) и штат более 251: падение откликов и рост зарплат бьют по затратам."}
+{"news_id": "n07", "company_id": "k12", "relevance": 1, "reason": "Штат 16-100: найм водителей и логистики дорожает, эффект средний."}
+{"news_id": "n07", "company_id": "k13", "relevance": 0, "reason": "Штат менее 15: найм не затрагивает компанию напрямую."}
+{"news_id": "n07", "company_id": "k14", "relevance": 0, "reason": "Штат менее 15: новость про найм не релевантна."}
+{"news_id": "n07", "company_id": "k15", "relevance": 1, "reason": "Штат 16-100: рост зарплат и текучесть персонала влияют на кофейню."}
+{"news_id": "n07", "company_id": "k16", "relevance": 1, "reason": "Штат 16-100: рост зарплат на стройке косвенно влияет на смету."}
+{"news_id": "n07", "company_id": "k17", "relevance": 0, "reason": "Штат менее 15 человек."}
+{"news_id": "n07", "company_id": "k18", "relevance": 0, "reason": "Штат менее 15 человек."}
+{"news_id": "n07", "company_id": "k19", "relevance": 2, "reason": "Штат 101-250: рост зарплат и текучесть IT-специалистов прямо меняют затраты."}
+{"news_id": "n07", "company_id": "k20", "relevance": 1, "reason": "Штат 16-100, быстрый рост: найм складских работников дорожает."}
+{"news_id": "n08", "company_id": "k11", "relevance": 1, "reason": "Складирование для розничных сетей: падение маржи клиентов косвенно влияет на объёмы."}
+{"news_id": "n08", "company_id": "k12", "relevance": 0, "reason": "Грузовой транспорт, розничная маржа в Самаре её не касается."}
+{"news_id": "n08", "company_id": "k13", "relevance": 1, "reason": "Розница 47.11 у prospect: падение маржи сети в другом регионе — отраслевой сигнал."}
+{"news_id": "n08", "company_id": "k14", "relevance": 2, "reason": "Розница 47.11, продукт loan: падение маржи и среднего чека давит на выручку и обслуживание кредита."}
+{"news_id": "n08", "company_id": "k15", "relevance": 0, "reason": "Кофейня без связи с продуктовой розницей."}
+{"news_id": "n08", "company_id": "k16", "relevance": 0, "reason": "Строительство, розничная маржа не касается."}
+{"news_id": "n08", "company_id": "k17", "relevance": 1, "reason": "Оптовая база снабжает розницу: сокращение покупок и маржи влияет на продажи."}
+{"news_id": "n08", "company_id": "k18", "relevance": 0, "reason": "Аренда недвижимости, розница напрямую не связана."}
+{"news_id": "n08", "company_id": "k19", "relevance": 0, "reason": "IT-разработка, не связана с розницей."}
+{"news_id": "n08", "company_id": "k20", "relevance": 1, "reason": "Маркетплейс 47.91: розничный спрос и средний чек влияют на продажи."}
+{"news_id": "n09", "company_id": "k11", "relevance": 1, "reason": "Регион Свердловской области совпадает; рост доставки — слабый косвенный сигнал для логистики."}
+{"news_id": "n09", "company_id": "k12", "relevance": 0, "reason": "Забайкальский край, доставка в Екатеринбурге не касается."}
+{"news_id": "n09", "company_id": "k13", "relevance": 0, "reason": "Тверская область, локальная новость из другого региона."}
+{"news_id": "n09", "company_id": "k14", "relevance": 0, "reason": "Тверская область, локальная новость из другого региона."}
+{"news_id": "n09", "company_id": "k15", "relevance": 1, "reason": "Доставка еды (56.10) в той же отрасли: рост заказов с доставкой — сигнал по конкуренции."}
+{"news_id": "n09", "company_id": "k16", "relevance": 0, "reason": "Строительство, доставка выпечки не касается."}
+{"news_id": "n09", "company_id": "k17", "relevance": 0, "reason": "Оптовая база, локальная доставка в Екатеринбурге не касается."}
+{"news_id": "n09", "company_id": "k18", "relevance": 0, "reason": "Аренда недвижимости, не касается."}
+{"news_id": "n09", "company_id": "k19", "relevance": 0, "reason": "IT-разработка, не касается."}
+{"news_id": "n09", "company_id": "k20", "relevance": 1, "reason": "Маркетплейс 47.91: рост спроса на доставку — отраслевой сигнал."}
+{"news_id": "n10", "company_id": "k11", "relevance": 1, "reason": "Складирование: оборот розницы и общепита влияет на объёмы ритейл-клиентов."}
+{"news_id": "n10", "company_id": "k12", "relevance": 0, "reason": "Грузовой транспорт, розничный оборот напрямую не касается."}
+{"news_id": "n10", "company_id": "k13", "relevance": 1, "reason": "Розница 47.11: рост оборота на 1,8% даёт отраслевой ориентир."}
+{"news_id": "n10", "company_id": "k14", "relevance": 1, "reason": "Розница 47.11, продукт loan: рост оборота на 1,8% — отраслевой контекст."}
+{"news_id": "n10", "company_id": "k15", "relevance": 2, "reason": "Общепит 56.10: оборот общепита вырос на 4,5% — прямой отраслевой сигнал по выручке кофейни."}
+{"news_id": "n10", "company_id": "k16", "relevance": 0, "reason": "Строительство, розничный оборот не касается."}
+{"news_id": "n10", "company_id": "k17", "relevance": 1, "reason": "Оптовая торговля: рост розницы увеличивает спрос на поставки."}
+{"news_id": "n10", "company_id": "k18", "relevance": 0, "reason": "Аренда недвижимости, не касается."}
+{"news_id": "n10", "company_id": "k19", "relevance": 0, "reason": "IT-разработка, не касается."}
+{"news_id": "n10", "company_id": "k20", "relevance": 1, "reason": "Маркетплейс: рост розничного оборота без алкоголя важен для спроса."}
+{"news_id": "n11", "company_id": "k11", "relevance": 1, "reason": "Компания крупнее МСП (более 251); средняя ставка для малого бизнеса косвенно интересна."}
+{"news_id": "n11", "company_id": "k12", "relevance": 2, "reason": "Продукт loan, штат 16-100: ставка МСП 17,8% и её снижение прямо меняют стоимость кредита."}
+{"news_id": "n11", "company_id": "k13", "relevance": 1, "reason": "Статус prospect; ставка МСП важна для будущего кредитования, продуктов нет."}
+{"news_id": "n11", "company_id": "k14", "relevance": 2, "reason": "Продукт loan, штат до 15: ставка МСП снизилась на 0,6 п.п., это прямо меняет стоимость кредита."}
+{"news_id": "n11", "company_id": "k15", "relevance": 1, "reason": "Продукты payroll и rko, кредита нет; ставка МСП косвенно интересна."}
+{"news_id": "n11", "company_id": "k16", "relevance": 2, "reason": "Строительство чувствительно к ставке МСП; есть продукт guarantee."}
+{"news_id": "n11", "company_id": "k17", "relevance": 1, "reason": "Статус prospect; ставка МСП — общий контекст."}
+{"news_id": "n11", "company_id": "k18", "relevance": 1, "reason": "Продукт deposit, кредита нет; ставка косвенно влияет на рынок недвижимости."}
+{"news_id": "n11", "company_id": "k19", "relevance": 0, "reason": "Продуктов кредита нет, IT-компания."}
+{"news_id": "n11", "company_id": "k20", "relevance": 1, "reason": "Статус prospect; ставки по кредитам МСП важны для оборотного капитала."}
+{"news_id": "n12", "company_id": "k11", "relevance": 1, "reason": "Продукт loan, но компания крупнее МСП; рост портфеля говорит о доступности кредита косвенно."}
+{"news_id": "n12", "company_id": "k12", "relevance": 1, "reason": "Продукт loan; рост портфеля МСП на 12,5% говорит о доступности кредита, прямого эффекта нет."}
+{"news_id": "n12", "company_id": "k13", "relevance": 0, "reason": "Статус prospect; статистика портфеля МСП не меняет операций."}
+{"news_id": "n12", "company_id": "k14", "relevance": 1, "reason": "Продукт loan; рост портфеля и снижение просрочки — общий фон для кредитования."}
+{"news_id": "n12", "company_id": "k15", "relevance": 0, "reason": "Кредита нет; портфель МСП кофейню не касается."}
+{"news_id": "n12", "company_id": "k16", "relevance": 1, "reason": "Строительство: доступность кредитования МСП косвенно важна."}
+{"news_id": "n12", "company_id": "k17", "relevance": 0, "reason": "Статус prospect; статистика не касается."}
+{"news_id": "n12", "company_id": "k18", "relevance": 0, "reason": "Продукт deposit; портфель кредитов не касается."}
+{"news_id": "n12", "company_id": "k19", "relevance": 0, "reason": "Продуктов кредита нет."}
+{"news_id": "n12", "company_id": "k20", "relevance": 0, "reason": "Статус prospect; статистика портфеля МСП не касается."}
+{"news_id": "n13", "company_id": "k11", "relevance": 0, "reason": "Без ВЭД, евро и импорт спецтехники не касаются."}
+{"news_id": "n13", "company_id": "k12", "relevance": 0, "reason": "ВЭД с Казахстаном, евро из Германии не связан."}
+{"news_id": "n13", "company_id": "k13", "relevance": 0, "reason": "Розница без ВЭД."}
+{"news_id": "n13", "company_id": "k14", "relevance": 0, "reason": "Розница без ВЭД."}
+{"news_id": "n13", "company_id": "k15", "relevance": 0, "reason": "Кофейня без ВЭД."}
+{"news_id": "n13", "company_id": "k16", "relevance": 1, "reason": "Строительство: импорт спецтехники и курс евро косвенно влияют на стоимость работ."}
+{"news_id": "n13", "company_id": "k17", "relevance": 1, "reason": "ВЭД с Турцией, евро связан с европейскими поставками; эффект косвенный."}
+{"news_id": "n13", "company_id": "k18", "relevance": 0, "reason": "Аренда, валюта не касается."}
+{"news_id": "n13", "company_id": "k19", "relevance": 0, "reason": "IT-разработка без импорта."}
+{"news_id": "n13", "company_id": "k20", "relevance": 0, "reason": "ВЭД с Китаем, евро не связан."}
+{"news_id": "n14", "company_id": "k11", "relevance": 0, "reason": "Штат более 251, выручка, вероятно, выше порога; эффект мал."}
+{"news_id": "n14", "company_id": "k12", "relevance": 1, "reason": "Штат 16-100: упрощёнка может быть актуальна; законопроект пока на первом чтении."}
+{"news_id": "n14", "company_id": "k13", "relevance": 1, "reason": "Розница, возможно УСН; изменение порога важно для налогового режима (prospect)."}
+{"news_id": "n14", "company_id": "k14", "relevance": 1, "reason": "Розница с малым штатом; возможное влияние на налоговый режим через УСН."}
+{"news_id": "n14", "company_id": "k15", "relevance": 1, "reason": "Кофейня 16-100, возможно на УСН; законопроект пока на первом чтении."}
+{"news_id": "n14", "company_id": "k16", "relevance": 1, "reason": "Строительство 16-100: применимость УСН зависит от выручки, эффект возможен."}
+{"news_id": "n14", "company_id": "k17", "relevance": 1, "reason": "Оптовая база с малым штатом; возможная связь с УСН, статус prospect."}
+{"news_id": "n14", "company_id": "k18", "relevance": 1, "reason": "Аренда, малый штат: УСН возможна, эффект косвенный."}
+{"news_id": "n14", "company_id": "k19", "relevance": 1, "reason": "IT, штат 101-250: УСН маловероятна, но новость общая для финдиректора."}
+{"news_id": "n14", "company_id": "k20", "relevance": 1, "reason": "Маркетплейс 16-100: возможное изменение налогового режима."}
+{"news_id": "n15", "company_id": "k11", "relevance": 2, "reason": "Складирование, штат более 251 и зарплатный продукт: рост МРОТ до 30 400 рублей повышает фонд оплаты труда."}
+{"news_id": "n15", "company_id": "k12", "relevance": 1, "reason": "Штат 16-100: МРОТ косвенно влияет на зарплаты водителей."}
+{"news_id": "n15", "company_id": "k13", "relevance": 0, "reason": "Штат менее 15 человек, эффект мал."}
+{"news_id": "n15", "company_id": "k14", "relevance": 0, "reason": "Штат менее 15 человек, эффект мал."}
+{"news_id": "n15", "company_id": "k15", "relevance": 1, "reason": "Штат 16-100, общепит: часть персонала близка к МРОТ, эффект косвенный."}
+{"news_id": "n15", "company_id": "k16", "relevance": 1, "reason": "Штат 16-100: МРОТ косвенно влияет на фонд оплаты рабочих."}
+{"news_id": "n15", "company_id": "k17", "relevance": 0, "reason": "Штат менее 15 человек."}
+{"news_id": "n15", "company_id": "k18", "relevance": 0, "reason": "Штат менее 15 человек."}
+{"news_id": "n15", "company_id": "k19", "relevance": 0, "reason": "Зарплаты IT-специалистов значительно выше МРОТ."}
+{"news_id": "n15", "company_id": "k20", "relevance": 1, "reason": "Штат 16-100: курьеры и склад могут быть близки к МРОТ."}
+{"news_id": "n16", "company_id": "k11", "relevance": 0, "reason": "Складирование в Свердловской области, Кубань не касается."}
+{"news_id": "n16", "company_id": "k12", "relevance": 0, "reason": "Забайкальский край, Кубань не касается."}
+{"news_id": "n16", "company_id": "k13", "relevance": 0, "reason": "Тверская область, не касается."}
+{"news_id": "n16", "company_id": "k14", "relevance": 0, "reason": "Тверская область, не касается."}
+{"news_id": "n16", "company_id": "k15", "relevance": 0, "reason": "Санкт-Петербург, не касается."}
+{"news_id": "n16", "company_id": "k16", "relevance": 0, "reason": "Москва, не касается."}
+{"news_id": "n16", "company_id": "k17", "relevance": 1, "reason": "Оптовая база в Краснодарском крае: заморозки задерживают отгрузку овощей, региональный эффект."}
+{"news_id": "n16", "company_id": "k18", "relevance": 0, "reason": "Санкт-Петербург, не касается."}
+{"news_id": "n16", "company_id": "k19", "relevance": 0, "reason": "Москва, не касается."}
+{"news_id": "n16", "company_id": "k20", "relevance": 0, "reason": "Приморский край, не касается."}
+{"news_id": "n17", "company_id": "k11", "relevance": 0, "reason": "Без ВЭД, тенге не касается."}
+{"news_id": "n17", "company_id": "k12", "relevance": 2, "reason": "ВЭД с Казахстаном: курс тенге снизился на 0,002 рубля, это прямо меняет стоимость расчётов."}
+{"news_id": "n17", "company_id": "k13", "relevance": 0, "reason": "Розница без ВЭД."}
+{"news_id": "n17", "company_id": "k14", "relevance": 0, "reason": "Розница без ВЭД."}
+{"news_id": "n17", "company_id": "k15", "relevance": 0, "reason": "Кофейня без ВЭД."}
+{"news_id": "n17", "company_id": "k16", "relevance": 0, "reason": "Строительство без ВЭД с Казахстаном."}
+{"news_id": "n17", "company_id": "k17", "relevance": 0, "reason": "ВЭД с Турцией, тенге не связан."}
+{"news_id": "n17", "company_id": "k18", "relevance": 0, "reason": "Аренда недвижимости, валюта не касается."}
+{"news_id": "n17", "company_id": "k19", "relevance": 0, "reason": "IT, без ВЭД."}
+{"news_id": "n17", "company_id": "k20", "relevance": 0, "reason": "ВЭД с Китаем, тенге не связан."}
+{"news_id": "n18", "company_id": "k11", "relevance": 1, "reason": "Продукт loan, но крупная компания; настроения о паузе по ставке косвенно важны."}
+{"news_id": "n18", "company_id": "k12", "relevance": 2, "reason": "Продукт loan: ожидание паузы по ставке при кредите 16,5% влияет на график обслуживания долга."}
+{"news_id": "n18", "company_id": "k13", "relevance": 0, "reason": "Статус prospect; производственный кредитный кейс не касается розницы."}
+{"news_id": "n18", "company_id": "k14", "relevance": 2, "reason": "Продукт loan: ставка 16,5% и ожидание снижения прямо касаются кредита."}
+{"news_id": "n18", "company_id": "k15", "relevance": 0, "reason": "Кредита нет; производственный кейс не касается кофейни."}
+{"news_id": "n18", "company_id": "k16", "relevance": 2, "reason": "Строительство: инвестиции и кредиты чувствительны к ставке; есть guarantee."}
+{"news_id": "n18", "company_id": "k17", "relevance": 0, "reason": "Статус prospect; не касается."}
+{"news_id": "n18", "company_id": "k18", "relevance": 1, "reason": "Продукт deposit: настроения по ставке влияют на доходность депозита, кредита нет."}
+{"news_id": "n18", "company_id": "k19", "relevance": 0, "reason": "Продуктов кредита нет, IT-компания."}
+{"news_id": "n18", "company_id": "k20", "relevance": 0, "reason": "Статус prospect; кредитный кейс производственной компании не касается."}
+{"news_id": "n19", "company_id": "k11", "relevance": 0, "reason": "Складирование, Казань не касается."}
+{"news_id": "n19", "company_id": "k12", "relevance": 0, "reason": "Забайкальский край, событие не касается."}
+{"news_id": "n19", "company_id": "k13", "relevance": 0, "reason": "Тверская область, не касается."}
+{"news_id": "n19", "company_id": "k14", "relevance": 0, "reason": "Тверская область, не касается."}
+{"news_id": "n19", "company_id": "k15", "relevance": 0, "reason": "Санкт-Петербург, отрасли нет."}
+{"news_id": "n19", "company_id": "k16", "relevance": 0, "reason": "Москва, не касается."}
+{"news_id": "n19", "company_id": "k17", "relevance": 0, "reason": "Краснодарский край, не касается."}
+{"news_id": "n19", "company_id": "k18", "relevance": 0, "reason": "Санкт-Петербург, не касается."}
+{"news_id": "n19", "company_id": "k19", "relevance": 1, "reason": "IT-разработка 62.01: отраслевое событие полезно для клиентов и маркетинга, финансов не меняет."}
+{"news_id": "n19", "company_id": "k20", "relevance": 0, "reason": "Приморский край, не касается."}
+{"news_id": "n20", "company_id": "k11", "relevance": 2, "reason": "Продукт loan: средняя ставка по кредитам юрлицам снизилась на 0,3 п.п., это прямо меняет стоимость долга."}
+{"news_id": "n20", "company_id": "k12", "relevance": 2, "reason": "Продукт loan: средняя ставка юрлиц 15,6% прямо влияет на стоимость кредита."}
+{"news_id": "n20", "company_id": "k13", "relevance": 1, "reason": "Статус prospect; ставки для юрлиц важны при будущем кредитовании."}
+{"news_id": "n20", "company_id": "k14", "relevance": 2, "reason": "Продукт loan: снижение ставки юрлиц прямо удешевляет кредит."}
+{"news_id": "n20", "company_id": "k15", "relevance": 1, "reason": "Кредита нет (payroll, rko); ставки юрлиц косвенно интересны."}
+{"news_id": "n20", "company_id": "k16", "relevance": 2, "reason": "Строительство: ставка по кредитам юрлиц прямо влияет на стоимость проектов; есть guarantee."}
+{"news_id": "n20", "company_id": "k17", "relevance": 1, "reason": "Статус prospect; ставки юрлиц — общий контекст."}
+{"news_id": "n20", "company_id": "k18", "relevance": 1, "reason": "Продукт deposit, кредита нет; ставки косвенно влияют на рынок аренды."}
+{"news_id": "n20", "company_id": "k19", "relevance": 0, "reason": "Продуктов кредита нет, IT-компания."}
+{"news_id": "n20", "company_id": "k20", "relevance": 1, "reason": "Статус prospect; ставка без залога выше 19% важна при оценке заёмного финансирования."}
+{"news_id": "n21", "company_id": "k11", "relevance": 0, "reason": "Без ВЭД, экспорт металла не касается."}
+{"news_id": "n21", "company_id": "k12", "relevance": 1, "reason": "ВЭД с Казахстаном: валютные колебания рубля влияют на расчёты косвенно."}
+{"news_id": "n21", "company_id": "k13", "relevance": 0, "reason": "Розница без ВЭД."}
+{"news_id": "n21", "company_id": "k14", "relevance": 0, "reason": "Розница без ВЭД."}
+{"news_id": "n21", "company_id": "k15", "relevance": 0, "reason": "Кофейня без ВЭД."}
+{"news_id": "n21", "company_id": "k16", "relevance": 0, "reason": "Строительство без ВЭД."}
+{"news_id": "n21", "company_id": "k17", "relevance": 1, "reason": "ВЭД с Турцией, статус prospect: валютная неопределённость влияет на бюджетирование."}
+{"news_id": "n21", "company_id": "k18", "relevance": 0, "reason": "Аренда без ВЭД."}
+{"news_id": "n21", "company_id": "k19", "relevance": 0, "reason": "IT без ВЭД."}
+{"news_id": "n21", "company_id": "k20", "relevance": 2, "reason": "ВЭД с Китаем: невозможность заложить курс в бюджет прямо касается закупок и ценообразования."}
+{"news_id": "n22", "company_id": "k11", "relevance": 0, "reason": "Складирование, маркировка розницы не касается."}
+{"news_id": "n22", "company_id": "k12", "relevance": 0, "reason": "Грузовой транспорт, маркировка не касается."}
+{"news_id": "n22", "company_id": "k13", "relevance": 2, "reason": "Розница 47.11: перенос штрафов на 1 июля 2027 года снижает риск штрафов за маркировку в магазине."}
+{"news_id": "n22", "company_id": "k14", "relevance": 2, "reason": "Розница 47.11: перенос штрафов за маркировку снижает риски магазина, сканеры на кассах пока не готовы."}
+{"news_id": "n22", "company_id": "k15", "relevance": 0, "reason": "Кофейня, маркировка розничных магазинов не касается."}
+{"news_id": "n22", "company_id": "k16", "relevance": 0, "reason": "Строительство, маркировка не касается."}
+{"news_id": "n22", "company_id": "k17", "relevance": 1, "reason": "Оптовая торговля, prospect: поставки маркированных товаров в розницу, эффект косвенный."}
+{"news_id": "n22", "company_id": "k18", "relevance": 0, "reason": "Аренда недвижимости, не касается."}
+{"news_id": "n22", "company_id": "k19", "relevance": 0, "reason": "IT-разработка, не касается."}
+{"news_id": "n22", "company_id": "k20", "relevance": 0, "reason": "Интернет-торговля без розничных магазинов, штрафы за кассы не касаются."}
+{"news_id": "n23", "company_id": "k11", "relevance": 0, "reason": "Складирование, потребительский спрос напрямую не касается."}
+{"news_id": "n23", "company_id": "k12", "relevance": 0, "reason": "Грузовой транспорт, потребительские настроения не касаются."}
+{"news_id": "n23", "company_id": "k13", "relevance": 1, "reason": "Розница 47.11: падение уверенности и ожиданий по крупным покупкам влияет на спрос."}
+{"news_id": "n23", "company_id": "k14", "relevance": 1, "reason": "Розница 47.11, продукт loan: падение уверенности снижает спрос на крупные покупки."}
+{"news_id": "n23", "company_id": "k15", "relevance": 1, "reason": "Кофейня 56.10, штат 16-100: спрос на общепит косвенно снижается."}
+{"news_id": "n23", "company_id": "k16", "relevance": 2, "reason": "Строительство: ухудшение ожиданий по крупным покупкам прямо бьёт по спросу на жильё (guarantee, rko)."}
+{"news_id": "n23", "company_id": "k17", "relevance": 1, "reason": "Оптовая торговля, prospect: спрос розницы косвенно падает."}
+{"news_id": "n23", "company_id": "k18", "relevance": 0, "reason": "Аренда недвижимости, не касается."}
+{"news_id": "n23", "company_id": "k19", "relevance": 0, "reason": "IT-услуги, не касается."}
+{"news_id": "n23", "company_id": "k20", "relevance": 1, "reason": "Маркетплейс 47.91: падение уверенности и ожидания роста цен влияют на спрос."}
+{"news_id": "n24", "company_id": "k11", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k12", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k13", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k14", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k15", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k16", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k17", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k18", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k19", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n24", "company_id": "k20", "relevance": 0, "reason": "Тульская выставка керамики не относится к профилю компании."}
+{"news_id": "n25", "company_id": "k11", "relevance": 2, "reason": "Штат более 251: рост средней зарплаты на 13,4% прямо удорожает фонд оплаты труда."}
+{"news_id": "n25", "company_id": "k12", "relevance": 1, "reason": "Штат 16-100: рост зарплат косвенно влияет на фонд оплаты."}
+{"news_id": "n25", "company_id": "k13", "relevance": 0, "reason": "Штат менее 15, эффект мал."}
+{"news_id": "n25", "company_id": "k14", "relevance": 0, "reason": "Штат менее 15, эффект мал."}
+{"news_id": "n25", "company_id": "k15", "relevance": 1, "reason": "Штат 16-100, зарплатный продукт: рост зарплат влияет на затраты кофейни."}
+{"news_id": "n25", "company_id": "k16", "relevance": 1, "reason": "Штат 16-100: рост зарплат в стройке косвенно влияет на смету."}
+{"news_id": "n25", "company_id": "k17", "relevance": 0, "reason": "Штат менее 15, эффект мал."}
+{"news_id": "n25", "company_id": "k18", "relevance": 0, "reason": "Штат менее 15, эффект мал."}
+{"news_id": "n25", "company_id": "k19", "relevance": 2, "reason": "Штат 101-250: рост зарплат на 13,4% прямо увеличивает фонд оплаты IT-специалистов."}
+{"news_id": "n25", "company_id": "k20", "relevance": 1, "reason": "Штат 16-100: рост зарплат влияет на стоимость персонала маркетплейса."}
+{"news_id": "n26", "company_id": "k11", "relevance": 0, "reason": "Складирование, не IT-компания."}
+{"news_id": "n26", "company_id": "k12", "relevance": 0, "reason": "Грузовой транспорт, не IT-компания."}
+{"news_id": "n26", "company_id": "k13", "relevance": 0, "reason": "Розница, не IT-компания."}
+{"news_id": "n26", "company_id": "k14", "relevance": 0, "reason": "Розница, не IT-компания."}
+{"news_id": "n26", "company_id": "k15", "relevance": 0, "reason": "Кофейня, не IT-компания."}
+{"news_id": "n26", "company_id": "k16", "relevance": 0, "reason": "Строительство, не IT-компания."}
+{"news_id": "n26", "company_id": "k17", "relevance": 0, "reason": "Оптовая торговля, не IT-компания."}
+{"news_id": "n26", "company_id": "k18", "relevance": 0, "reason": "Аренда, не IT-компания."}
+{"news_id": "n26", "company_id": "k19", "relevance": 2, "reason": "IT-разработка 62.01: продление льготных взносов до 2030 года меняет страховые расходы компании."}
+{"news_id": "n26", "company_id": "k20", "relevance": 0, "reason": "Маркетплейс, не IT-компания."}
+{"news_id": "n27", "company_id": "k11", "relevance": 0, "reason": "ОАЭ и дирхам не связаны с деятельностью компании."}
+{"news_id": "n27", "company_id": "k12", "relevance": 0, "reason": "ОАЭ и дирхам не связаны с деятельностью компании."}
+{"news_id": "n27", "company_id": "k13", "relevance": 0, "reason": "ОАЭ и дирхам не связаны с деятельностью компании."}
+{"news_id": "n27", "company_id": "k14", "relevance": 0, "reason": "ОАЭ и дирхам не связаны с деятельностью компании."}
+{"news_id": "n27", "company_id": "k15", "relevance": 0, "reason": "ОАЭ и дирхам не связаны с деятельностью компании."}
+{"news_id": "n27", "company_id": "k16", "relevance": 0, "reason": "ОАЭ и дирхам не связаны с деятельностью компании."}
+{"news_id": "n27", "company_id": "k17", "relevance": 0, "reason": "ВЭД с Турцией, дирхам не связан."}
+{"news_id": "n27", "company_id": "k18", "relevance": 0, "reason": "ОАЭ и дирхам не связаны с деятельностью компании."}
+{"news_id": "n27", "company_id": "k19", "relevance": 0, "reason": "ОАЭ и дирхам не связаны с деятельностью компании."}
+{"news_id": "n27", "company_id": "k20", "relevance": 0, "reason": "ВЭД с Китаем, дирхам не связан."}
+{"news_id": "n28", "company_id": "k11", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k12", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k13", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k14", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k15", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k16", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k17", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k18", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k19", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}
+{"news_id": "n28", "company_id": "k20", "relevance": 0, "reason": "Спортивное событие в Самаре не относится к профилю."}

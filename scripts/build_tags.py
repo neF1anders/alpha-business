@@ -27,7 +27,6 @@ SECTORS = [
 COMMODITY_SECTORS = {"agro", "mining", "energy"}
 COMMODITY_DIVISIONS = {10, 11, 19, 20, 23, 24, 25}  # пищевая, нефтепереработка, химия, неметаллы, металлургия
 CONSUMER_SECTORS = {"trade", "horeca", "culture_sport", "other_services"}
-HIGH_WORKERS = {"101-250", "Более 251"}
 
 # Продукты банка: колонка профиля -> тег product:*
 PRODUCTS = {
@@ -71,7 +70,6 @@ def build_tags(p: pd.DataFrame) -> pd.DataFrame:
     # --- факторы влияния ---
     add(p[RATE_PRODUCTS].eq(1).any(axis=1), "factor:key_rate")
     add(p["fts_flag"].eq(1), "factor:fx")
-    add(p["amount_workers_fns_gradation"].isin(HIGH_WORKERS), "factor:labor")
     add(sector.isin(COMMODITY_SECTORS) | pd.to_numeric(division, errors="coerce").isin(COMMODITY_DIVISIONS),
         "factor:commodities")
     add(sector.isin(CONSUMER_SECTORS), "factor:consumer_demand")

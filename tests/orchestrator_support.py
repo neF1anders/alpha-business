@@ -11,7 +11,7 @@ from orchestrator.infrastructure.template_branch import TemplateSummaryBranch
 NOW = datetime(2026, 9, 14, 12, 0, tzinfo=timezone.utc)
 
 PROFILE = CompanyProfile(
-    company_id="U_1", segment_id="trade|mid", role="cfo",
+    company_id="U_1", segment_id="trade-mid", role="cfo",
     tags=frozenset({"sector:trade", "okved:47", "factor:key_rate", "factor:consumer_demand",
                     "product:credit", "region:Москва", "size:mid"}),
     features=("отрасль: торговля", "продукты банка: кредитные продукты"))
@@ -57,9 +57,9 @@ class FakeBranch(TemplateSummaryBranch):
         if self.error:
             raise self.error
 
-    async def banners(self, req):
+    async def banner(self, req):
         await self._gate(req)
-        return await super().banners(req)
+        return await super().banner(req)
 
     async def chat(self, req):
         await self._gate(req)

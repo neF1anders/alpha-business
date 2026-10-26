@@ -57,20 +57,20 @@ Tesseract отдельно и передать путь через `--tesseract`
 
 ```powershell
 uv venv
-uv pip install -r requirements.txt --torch-backend cpu
-.venv/Scripts/python.exe -m ingestion prepare-csv
-.venv/Scripts/python.exe -m ingestion extract-pdfs --metadata data/reports-metadata.json --tesseract "C:/Program Files/Tesseract-OCR/tesseract.exe"
-.venv/Scripts/python.exe -m ingestion prepare-news
-.venv/Scripts/python.exe -m ingestion tag-chunks
+uv sync --extra ml
+uv run python -m ingestion prepare-csv
+uv run python -m ingestion extract-pdfs --metadata data/reports-metadata.json --tesseract "C:/Program Files/Tesseract-OCR/tesseract.exe"
+uv run python -m ingestion prepare-news
+uv run python -m ingestion tag-chunks
 $env:PGHOST = "localhost"
 $env:PGPORT = "5432"
 $env:PGDATABASE = "insights"
 $env:PGUSER = "insights"
 $env:PGPASSWORD = "пароль из .env"
-.venv/Scripts/python.exe -m ingestion init-db
-.venv/Scripts/python.exe -m ingestion load-csv
-.venv/Scripts/python.exe -m ingestion load-pdfs
-.venv/Scripts/python.exe -m ingestion load-news
+uv run python -m ingestion init-db
+uv run python -m ingestion load-csv
+uv run python -m ingestion load-pdfs
+uv run python -m ingestion load-news
 ```
 
 Вместо `PG*` поддерживается `DATABASE_URL`. Локальный Python сам `.env` не читает;
@@ -179,7 +179,7 @@ CSV остаются реляционными данными для SQL-филь
 ## Проверки
 
 ```powershell
-.venv/Scripts/python.exe -m unittest discover -s tests -v
+uv run python -m unittest discover -s tests -v
 ```
 
 Проверка с настоящими Tesseract и PostgreSQL в контейнере:
