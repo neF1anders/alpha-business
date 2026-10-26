@@ -92,7 +92,7 @@ function createCompanyBlock() {
 /** User block with a dropdown: company switcher, demo employee switcher, sign out. */
 function createUserMenu() {
   const { session, company, employee, memberships } = currentContext();
-  if (!session) return h("span", { class: "user-pill" }, "Пользователь");
+  if (!session) return h("span", { class: "user-pill" }, employee?.full_name ?? "Пользователь");
 
   const menu = h("div", { class: "user-menu__panel", role: "menu", hidden: true });
   const trigger = h(
