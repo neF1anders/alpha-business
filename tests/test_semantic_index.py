@@ -3,7 +3,9 @@ import unittest
 import numpy as np
 from datetime import datetime,timezone
 from unittest.mock import patch
-from retrieval.semantic import SPACE_ID,SemanticNewsIndex,build_index,windows
+from retrieval.application.semantic_index import SemanticNewsIndex,build_index
+from retrieval.domain.embedding import SPACE_ID,windows
+from retrieval.infrastructure.postgres_embeddings import PostgresEmbeddingStore
 
 
 class WindowTests(unittest.TestCase):
@@ -28,21 +30,21 @@ class SemanticDatabaseTests(unittest.TestCase):
     def setUpClass(cls):
         from tests.test_news_retrieval import NewsRetrievalTests
         cls.fixture=NewsRetrievalTests;cls.fixture.setUpClass()
-        from ingestion.database import connect
-        cls.connection=patch('retrieval.semantic.connect',new=connect);cls.connection.start()
+        from ingestion.infrastructure.postgres import connect
+        cls.connection=patch('ingestion.infrastructure.postgres.connect',new=connect);cls.connection.start()
     @classmethod
     def tearDownClass(cls):cls.connection.stop();cls.fixture.tearDownClass()
 
     def test_idempotent_complete_index_and_source_changes_fail_closed(self):
-        first=build_index(FakeEncoder());self.assertEqual(first['new_documents'],6)
-        self.assertEqual(build_index(FakeEncoder())['new_documents'],0)
-        index=SemanticNewsIndex();self.assertEqual(len(index.passages),12)
+        first=build_index(FakeEncoder(),PostgresEmbeddingStore());self.assertEqual(first['new_documents'],6)
+        self.assertEqual(build_index(FakeEncoder(),PostgresEmbeddingStore())['new_documents'],0)
+        index=SemanticNewsIndex(PostgresEmbeddingStore());self.assertEqual(len(index.passages),12)
         query=np.zeros(384);query[0]=1
         hits=index.search(query,as_of=datetime(2026,9,14,tzinfo=timezone.utc),
                           published_after=datetime(2026,9,1,tzinfo=timezone.utc))
         self.assertEqual({r['news_id'] for r in hits},{'n1','n2','n5','n6'})
         self.assertEqual(len(hits),4) # one hit per news, not per passage
-        from ingestion.database import connect
+        from ingestion.infrastructure.postgres import connect
         with connect() as c:c.execute("UPDATE insights.news_articles SET title='changed' WHERE news_id='n1'")
-        with self.assertRaises(ValueError):SemanticNewsIndex()
-        with self.assertRaises(ValueError):build_index(FakeEncoder())
+        with self.assertRaises(ValueError):SemanticNewsIndex(PostgresEmbeddingStore())
+        with self.assertRaises(ValueError):build_index(FakeEncoder(),PostgresEmbeddingStore())

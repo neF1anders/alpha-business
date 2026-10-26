@@ -10,8 +10,8 @@ from unittest.mock import patch
 import psycopg
 from psycopg import sql
 
-from ingestion import database
-from ingestion.common import write_json
+from tests.ingestion_support import database
+from tests.ingestion_support import write_json
 from retrieval import retrieve
 
 AS_OF = date(2026, 10, 24)
@@ -23,14 +23,14 @@ class RetrievalValidationTests(unittest.TestCase):
                  dict(query_mode='unknown'), dict(limit=0), dict(limit=True), dict(include_undated='yes'),
                  dict(max_per_document=0), dict(source_files='test.pdf'),
                  dict(published_after=date(2026, 10, 25))]
-        with patch('ingestion.database.connect') as connect:
+        with patch('ingestion.infrastructure.postgres.connect') as connect:
             for case in cases:
                 with self.subTest(case=case), self.assertRaises(ValueError):
                     retrieve(**(dict(query='ключевая ставка', as_of=AS_OF) | case))
             connect.assert_not_called()
 
     def test_explicit_empty_source_filter_returns_nothing(self):
-        with patch('ingestion.database.connect') as connect:
+        with patch('ingestion.infrastructure.postgres.connect') as connect:
             self.assertEqual(retrieve('ставка', as_of=AS_OF, source_files=[]), [])
             connect.assert_not_called()
 
@@ -44,7 +44,7 @@ class RetrievalDatabaseTests(unittest.TestCase):
         cls.name = 'insights_test_' + uuid.uuid4().hex
         cls.admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(cls.name)))
         cls.addClassCleanup(lambda: cls.admin.execute(sql.SQL('DROP DATABASE {}').format(sql.Identifier(cls.name))))
-        patcher = patch('ingestion.database.connect',
+        patcher = patch('ingestion.infrastructure.postgres.connect',
                         side_effect=lambda: psycopg.connect(cls.admin.info.dsn, dbname=cls.name))
         patcher.start()
         cls.addClassCleanup(patcher.stop)
@@ -79,7 +79,7 @@ class RetrievalDatabaseTests(unittest.TestCase):
             database.load_pdfs(directory)
 
     def test_news_in_shared_chunks_never_becomes_bank_evidence(self):
-        from ingestion.news_documents import prepare_news
+        from tests.ingestion_support import prepare_news
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
             source=root/'input.json'

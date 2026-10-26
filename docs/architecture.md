@@ -70,10 +70,23 @@ sequenceDiagram
 |---|---|---|
 | `ProfileRepository` | `infrastructure/profiles_csv.py` | теги компании |
 | `CompanyDossierSource` | `infrastructure/postgres_dossier.py` | профиль, платёжный граф, связанные компании (только чтение) |
-| `NewsRetriever`, `EventRetriever`, `Reranker` | `retrieval/*`, `domain/ranking.py` | новости и контекст аналитики банка |
+| `NewsRetriever`, `EventRetriever`, `Reranker` | `retrieval/interfaces/orchestrator_ports.py`, `domain/ranking.py` | новости и контекст аналитики банка |
 | `SummaryBranch` | `infrastructure/summary_branch_adapter.py` | баннер по новости, ответ чата |
 | `BannerFeed` | `infrastructure/summary_branch_adapter.py` | сохранённые баннеры и реакции |
 | `SignalSink`, `SignalStream` | `infrastructure/signal_hub.py` | события открытой сессии |
+
+## Слои пакетов retrieval и ingestion
+
+Оба пакета разложены так же, как оркестратор: зависимости направлены только внутрь (`interfaces`, `infrastructure` -> `application` -> `domain`). Порты (Protocol) лежат в `application/ports.py`, реализации в `infrastructure/`.
+
+| Слой | `retrieval/` | `ingestion/` |
+|---|---|---|
+| `domain` | нормализация запроса, правила тег -> FTS-фраза (`search_rules`), потребности ретрива (`needs`), правила контекста события (`event_rules`), ключ дедупликации (`headlines`), проверка URL материалов (`bank_materials`), рецепт эмбеддингов (`embedding`) | таксономия, словарь и правила тегов (`tagging`, `taxonomy`), нарезка текста (`chunking`), правила CSV (`csv_rules`), проверка документа (`document_rules`), URL, HTML и RSS новостей (`news_urls`, `news_html`, `news_feeds`) |
+| `application` | поиск новостей (`news_search`), контекст события (`event_context`), локальная лента (`local_feed`), переранжирование (`rerank`), индекс эмбеддингов (`semantic_index`), поиск по отчётам (`document_search`) | по одному модулю на сценарий: `prepare_csv`, `extract_pdfs`, `prepare_news`, `tag_artifacts`, `load_documents`, `load_news_snapshot`, `collect_news`, `archive_crawl`, `audit_snapshot` |
+| `infrastructure` | PostgreSQL (`postgres_news`, `postgres_documents`, `postgres_embeddings`, `postgres_activity`), E5 (`e5_encoder`), cross-encoder (`cross_encoder`), проверка PDF на диске (`report_files`) | PostgreSQL (`postgres`), Tesseract, PyMuPDF, urllib-загрузчик, SQLite-состояние обхода и кэш тегов, sentence-transformers, файловое хранилище артефактов |
+| `interfaces` | `orchestrator_ports.py` (реализации портов оркестратора), `library.py` (`retrieve`), CLI | CLI `python -m ingestion`, CLI сборщиков новостей, `composition.py` (сборка зависимостей) |
+
+Команды `python -m ingestion ...`, `python -m ingestion.news_data|news_archive|news_audit`, `python -m retrieval`, `python -m retrieval.semantic|reranker` не изменились: одноимённые модули верхнего уровня только вызывают CLI из `interfaces/`.
 
 ## Масштабирование (план, не реализовано)
 

@@ -10,9 +10,10 @@ from unittest.mock import patch
 import psycopg
 from psycopg import sql
 
-from ingestion import database
-from ingestion.news_database import load_collector_jsonl, load_news, read_collector_jsonl, read_snapshot
-from ingestion.news_data import digest
+from tests.ingestion_support import database
+from ingestion.application.load_news_snapshot import read_collector_jsonl, read_snapshot
+from tests.ingestion_support import load_collector_jsonl, load_news_snapshot as load_news
+from ingestion.domain.news_urls import digest
 
 
 def article(number, text=None):
@@ -90,7 +91,7 @@ class DisposableDatabase(unittest.TestCase):
         cls.admin=psycopg.connect(os.environ.get('DATABASE_URL',''),autocommit=True)
         cls.name='insights_news_test_'+uuid.uuid4().hex
         cls.admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(cls.name)))
-        cls.connection_patch=patch('ingestion.database.connect',
+        cls.connection_patch=patch('ingestion.infrastructure.postgres.connect',
             side_effect=lambda:psycopg.connect(cls.admin.info.dsn,dbname=cls.name))
         cls.connection_patch.start()
         database.initialize();database.initialize()

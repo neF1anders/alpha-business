@@ -6,8 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .common import sha256, write_json
-from .pdf_data import chunks
+from ..domain.chunking import chunks
 
 # These flags describe incomplete content, explicitly allowed by --include-partial.
 # Other quality flags (e.g. future dates) still require review.
@@ -36,11 +35,11 @@ def records(path):
                 yield number, item, None
 
 
-def prepare_news(source, output, size=1400, overlap=200, *, include_partial=False, dry_run=False):
+def prepare_news(storage, source, output, size=1400, overlap=200, *, include_partial=False, dry_run=False):
     source, output = Path(source), Path(output)
     list(chunks('test', size, overlap))
     manifest = output / 'manifest.json'
-    source_hash = sha256(source)
+    source_hash = storage.sha256(source)
     if not dry_run:
         output.mkdir(parents=True, exist_ok=True)
         manifest.unlink(missing_ok=True)
@@ -133,8 +132,8 @@ def prepare_news(source, output, size=1400, overlap=200, *, include_partial=Fals
             continue
         filename = document_id + '.news.json'
         if not dry_run:
-            write_json(output / filename, doc)
-            outputs[filename] = sha256(output / filename)
+            storage.write_json(output / filename, doc)
+            outputs[filename] = storage.sha256(output / filename)
         stats['accepted'] += 1
         stats['chunks'] += len(doc['pages'][0]['chunks'])
         stats['needs_review'] += int(bool(review_flags))
@@ -144,7 +143,7 @@ def prepare_news(source, output, size=1400, overlap=200, *, include_partial=Fals
         with (output / 'rejected.jsonl').open('w', encoding='utf-8') as stream:
             for item in audit:
                 stream.write(json.dumps(item, ensure_ascii=False) + '\n')
-    if sha256(source) != source_hash:
+    if storage.sha256(source) != source_hash:
         raise RuntimeError('News source changed during processing')
     if not stats['accepted'] and not dry_run:
         raise ValueError('No eligible articles; see rejected.jsonl')
@@ -154,11 +153,11 @@ def prepare_news(source, output, size=1400, overlap=200, *, include_partial=Fals
     if dry_run:
         report['dry_run'] = True
     else:
-        write_json(manifest, report)
+        storage.write_json(manifest, report)
     return {k: v for k, v in report.items() if k != 'outputs'}
 
 
-def artifact_paths(directory):
+def artifact_paths(storage, directory):
     directory = Path(directory)
     manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8'))
     if manifest.get('version') != 1:
@@ -168,7 +167,7 @@ def artifact_paths(directory):
         if Path(name).name != name or not name.endswith('.news.json'):
             raise ValueError('Invalid artifact filename')
         path = directory / name
-        if sha256(path) != digest:
+        if storage.sha256(path) != digest:
             raise ValueError(f'News artifact checksum mismatch: {name}')
         result.append(path)
     return result

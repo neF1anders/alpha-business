@@ -1,8 +1,6 @@
 """Deterministic monitoring topics from source activity, never invented exposure."""
 from dataclasses import dataclass
 
-from orchestrator.domain.news_quality import historical_retrospective
-
 # These are questions to monitor, not assertions about the company's contracts.
 TOPICS = {
     'trade': ('предложение товаров, оптовые цены и спрос',

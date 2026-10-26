@@ -51,8 +51,8 @@ flowchart LR
 ```
 src/
   backend/
-    ingestion/        CSV, PDF, новости -> PostgreSQL, теги
-    retrieval/        поиск новостей и материалов банка, E5 и cross-encoder (опционально)
+    ingestion/        CSV, PDF, новости -> PostgreSQL, теги (domain, application, infrastructure, interfaces)
+    retrieval/        поиск новостей и материалов банка, E5 и cross-encoder (domain, application, infrastructure, interfaces)
     orchestrator/     DDD: domain, application (сценарии), infrastructure (адаптеры), api (HTTP, SSE, WS)
     summary_branch/   DDD: разбор кластера, пути влияния, персональный текст, валидация, хранилище баннеров
     evaluation/       метрики ретрива

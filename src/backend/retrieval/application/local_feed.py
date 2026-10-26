@@ -2,30 +2,24 @@
 import asyncio
 from dataclasses import replace
 from datetime import datetime,timedelta,timezone
-import hashlib
-import re
 import threading
 
-from ingestion.database import connect
 from orchestrator.domain.errors import DependencyUnavailable
 from orchestrator.domain.models import NewsItem,RetrievalResult,SourceKind
-from .needs import balanced_candidates,historical_retrospective,monitoring_queries,profile_context_queries
-from .news import PostgresNewsRetriever
+from orchestrator.domain.news_quality import historical_retrospective
+
+from ..domain.headlines import headline_cluster_id
+from ..domain.needs import balanced_candidates,monitoring_queries,profile_context_queries
+from .ports import ActivityCatalog
 
 
 class ActivityProfiles:
-    def __init__(self,profiles):self.profiles=profiles;self.activities=None
+    def __init__(self,profiles,catalog: ActivityCatalog):
+        self.profiles=profiles;self.catalog=catalog;self.activities=None
 
     async def warmup(self):
         await self.profiles.warmup()
-        self.activities=await asyncio.to_thread(self._load)
-
-    @staticmethod
-    def _load():
-        with connect() as c:
-            c.execute('SET TRANSACTION READ ONLY')
-            c.execute("SET LOCAL statement_timeout='5s'")
-            return dict(c.execute('SELECT synthetic_u,mainokved_name FROM insights.companies'))
+        self.activities=await asyncio.to_thread(self.catalog.load_activities)
 
     async def get(self,company_id):
         if self.activities is None:raise RuntimeError('Profile warmup required')
@@ -34,17 +28,17 @@ class ActivityProfiles:
 
 
 class LocalFeedRetriever:
-    def __init__(self,lexical=None,*,include_context=False):
+    def __init__(self,lexical,load_semantic,*,include_context=False):
+        """load_semantic() -> (encoder, index); called once on warmup in a worker thread."""
         if type(include_context) is not bool:raise ValueError("include_context must be boolean")
         self.include_context=include_context
-        self.lexical=lexical or PostgresNewsRetriever(bank_enabled=False)
+        self.lexical=lexical;self.load_semantic=load_semantic
         self.encoder=None;self.index=None;self._lock=threading.Lock()
 
     async def warmup(self):await asyncio.to_thread(self._load)
 
     def _load(self):
-        from .semantic import LocalE5,SemanticNewsIndex
-        self.encoder=LocalE5();self.index=SemanticNewsIndex()
+        self.encoder,self.index=self.load_semantic()
 
     def _dense(self,profile,as_of,since):
         if self.index is None:raise RuntimeError('Index warmup required')
@@ -88,9 +82,7 @@ class LocalFeedRetriever:
             if d in sparse:
                 result.append(replace(sparse[d],retrieval_score=1/rank));continue
             n=self.index.documents[d]
-            normalized=' '.join(re.findall(r'\w+',n['title'].casefold().replace('ё','е')))
-            key=normalized+'|'+n['published_at'].astimezone(timezone.utc).date().isoformat()
-            result.append(NewsItem(news_id=d,cluster_id='headline:'+hashlib.sha256(key.encode()).hexdigest()[:24],
+            result.append(NewsItem(news_id=d,cluster_id=headline_cluster_id(n['title'],n['published_at']),
                 title=n['title'],text=n['text'],url=n['url'],published_at=n['published_at'],
                 source_kind=SourceKind(n['source_kind']),retrieval_score=1/rank))
         return RetrievalResult(tuple(result))

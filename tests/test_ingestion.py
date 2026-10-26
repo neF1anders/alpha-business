@@ -4,11 +4,14 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock
 
-from ingestion.csv_data import COMPANY_COLUMNS, LINK_COLUMNS, PAYMENT_COLUMNS, SOURCES, prepare_csv
-from ingestion.pdf_data import chunks, extract_pdfs, parse_tsv, check_tesseract, ocr_page
-from ingestion.database import validate_document
+from ingestion.domain.csv_rules import COMPANY_COLUMNS, LINK_COLUMNS, PAYMENT_COLUMNS, SOURCES
+from tests.ingestion_support import prepare_csv
+from ingestion.domain.chunking import chunks
+from ingestion.infrastructure.tesseract import parse_tsv, check_tesseract, ocr_page
+from tests.ingestion_support import extract_pdfs
+from ingestion.domain.document_rules import validate_document
 
 
 class CsvTests(unittest.TestCase):
@@ -98,11 +101,12 @@ class PdfTests(unittest.TestCase):
                 page.insert_text((50, 50), 'Native source text about inflation and interest rates. ' * 2)
                 doc.new_page()  # Image/blank page exercises the OCR branch.
                 doc.save(source / 'test.pdf')
-            with patch('ingestion.pdf_data.check_tesseract', return_value='test-engine'), \
-                    patch('ingestion.pdf_data.ocr_page', return_value=('Текст распознан с низкой уверенностью.', 40)) as ocr:
-                extract_pdfs(source, root / 'out')
-                extract_pdfs(source, root / 'out')
-                self.assertEqual(ocr.call_count, 1)
+            engine = Mock()
+            engine.check.return_value = 'test-engine'
+            engine.recognize.return_value = ('Текст распознан с низкой уверенностью.', 40)
+            extract_pdfs(source, root / 'out', ocr=engine)
+            extract_pdfs(source, root / 'out', ocr=engine)
+            self.assertEqual(engine.recognize.call_count, 1)
             artifact = json.loads((root / 'out/test.pdf.json').read_text(encoding='utf-8'))
             self.assertEqual(artifact['pages'][0]['method'], 'native')
             self.assertTrue(artifact['pages'][1]['needs_review'])

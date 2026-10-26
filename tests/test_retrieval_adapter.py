@@ -1,7 +1,7 @@
 import unittest
 
-from retrieval.adapter import bank_materials
-from retrieval.query import natural_query
+from retrieval.domain.bank_materials import bank_materials
+from retrieval.domain.query import natural_query
 
 
 class AdapterTests(unittest.TestCase):

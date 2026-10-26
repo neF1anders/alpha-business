@@ -2,9 +2,12 @@ import unittest
 import tempfile
 import json
 import gzip
-from ingestion.news_data import digest
+from ingestion.domain.news_urls import digest
 from pathlib import Path
-from ingestion.news_archive import ArchiveParser,article_metadata,connect_state,seed_snapshot,counts
+from ingestion.application.archive_crawl import seed_snapshot,counts
+from ingestion.domain.news_html import ArchiveParser,article_metadata
+from ingestion.infrastructure.crawl_state import connect_state
+from tests.ingestion_support import STORAGE
 
 
 class ArchiveTests(unittest.TestCase):
@@ -16,7 +19,7 @@ class ArchiveTests(unittest.TestCase):
             (seed/'news.jsonl').write_text(json.dumps(row)+'\n')
             (seed/'receipts.jsonl').write_text('')
             db=connect_state(root)
-            seed_snapshot(db,root,seed);seed_snapshot(db,root,seed)
+            seed_snapshot(STORAGE,db,root,seed);seed_snapshot(STORAGE,db,root,seed)
             self.assertEqual(counts(db)['eligible'],1)
             self.assertEqual(counts(db)['processed'],1)
             db.close()
@@ -34,7 +37,7 @@ class ArchiveTests(unittest.TestCase):
             (seed / 'receipts.jsonl').write_text(json.dumps(receipt)+'\n')
             root = Path(tmp) / 'output'; root.mkdir(); (root / 'raw').mkdir()
             db = connect_state(root)
-            seed_snapshot(db, root, seed)
+            seed_snapshot(STORAGE, db, root, seed)
             stored = json.loads(db.execute('SELECT receipt FROM articles').fetchone()[0])
             self.assertEqual(gzip.decompress((root / stored['path']).read_bytes()), raw)
             self.assertEqual(stored['fetched_at'], receipt['fetched_at'])
@@ -43,7 +46,7 @@ class ArchiveTests(unittest.TestCase):
             other = Path(tmp) / 'other'; other.mkdir(); (other / 'raw').mkdir()
             db = connect_state(other)
             with self.assertRaisesRegex(ValueError, 'SHA256 mismatch'):
-                seed_snapshot(db, other, seed)
+                seed_snapshot(STORAGE, db, other, seed)
             db.close()
 
     def test_archive_ignores_header_links_and_preserves_rubrics(self):

@@ -10,7 +10,7 @@ import asyncio
 import logging
 from typing import Optional
 
-from retrieval.news import open_connection
+from retrieval.infrastructure.connection import open_connection
 
 from ..domain.models import CompanyDossier, CounterpartySector
 

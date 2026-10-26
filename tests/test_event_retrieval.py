@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import psycopg
 from orchestrator.domain.models import CompanyProfile, NewsItem
-from retrieval.events import PostgresEventRetriever
+from retrieval.interfaces.orchestrator_ports import PostgresEventRetriever
 
 NOW=datetime(2026,9,14,12,tzinfo=timezone.utc)
 PROFILE=CompanyProfile('synthetic','synthetic',frozenset({'product:credit','factor:key_rate'}))
@@ -18,7 +18,7 @@ def event(title='Ключевая ставка сохранена'):
 
 class EventBoundsTests(unittest.IsolatedAsyncioTestCase):
     async def test_future_event_and_invalid_bounds_never_connect(self):
-        with patch('retrieval.events.open_connection',new_callable=AsyncMock) as c:
+        with patch('retrieval.infrastructure.postgres_news.open_connection',new_callable=AsyncMock) as c:
             for item,limit in [(replace(event(),published_at=NOW+timedelta(days=1)),5),
                                (event(),0),(replace(event(),text=''),5)]:
                 with self.assertRaises(ValueError):
@@ -27,7 +27,7 @@ class EventBoundsTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_timeout_is_bounded(self):
         async def slow(): await asyncio.sleep(5)
-        with patch('retrieval.events.open_connection',side_effect=slow):
+        with patch('retrieval.infrastructure.postgres_news.open_connection',side_effect=slow):
             with self.assertRaises(TimeoutError):
                 await PostgresEventRetriever(timeout_s=.01).retrieve(event(),PROFILE,as_of=NOW)
 
@@ -40,8 +40,8 @@ class EventDatabaseTests(unittest.IsolatedAsyncioTestCase):
         from tests.test_news_retrieval import NewsRetrievalTests
         cls.fixture=NewsRetrievalTests
         cls.fixture.setUpClass()
-        from retrieval import news
-        cls.connection=patch('retrieval.events.open_connection',new=news.open_connection)
+        from retrieval.infrastructure import postgres_news
+        cls.connection=patch('retrieval.infrastructure.postgres_news.open_connection',new=postgres_news.open_connection)
         cls.connection.start()
 
     @classmethod
@@ -63,7 +63,7 @@ class EventDatabaseTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(material.doc_id.startswith('bank:'))
         self.assertEqual(material.page,1)
         self.assertEqual(borrower.trace['evidence_role'],'dated_background_not_current_bank_verdict')
-        from ingestion.database import connect
+        from ingestion.infrastructure.postgres import connect
         with connect() as conn:
             self.assertEqual(conn.execute("SELECT count(*) FROM insights.news_articles WHERE news_id='unseen-external-event'").fetchone()[0],0)
 
@@ -89,7 +89,7 @@ class EventDatabaseTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('country:ДАНИЯ',actual.event_tags)
 
     async def test_read_only_and_earlier_cutoff(self):
-        with patch('retrieval.events.EVENT_BANK_SQL','DELETE FROM insights.news_articles'):
+        with patch('retrieval.infrastructure.postgres_news.EVENT_BANK_SQL','DELETE FROM insights.news_articles'):
             with self.assertRaises(psycopg.errors.ReadOnlySqlTransaction):
                 await PostgresEventRetriever(timeout_s=2).retrieve(event(),PROFILE,as_of=NOW)
         early=NOW-timedelta(days=4)
