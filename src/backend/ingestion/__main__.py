@@ -42,8 +42,12 @@ def main():
     news.add_argument('--output', default='data/processed/news')
     news.add_argument('--chunk-size', type=int, default=1400)
     news.add_argument('--overlap', type=int, default=200)
+    news.add_argument('--include-partial', action='store_true',
+                      help='Include excerpts and title-only articles in retrieval; preserve original quality metadata')
+    news.add_argument('--dry-run', action='store_true', help='Validate and count articles/chunks without writing artifacts')
     tag = commands.add_parser('tag-chunks', help='Tag all prepared PDF and news chunks')
     tag.add_argument('--pdf-source', default='data/processed/pdf')
+    tag.add_argument('--news-only', action='store_true', help='Tag only news; do not read PDF artifacts')
     tag.add_argument('--news-source', default='data/processed/news')
     tag.add_argument('--output', default='data/processed/tagged')
     tag.add_argument('--companies', default='data/processed/csv/companies.csv')
@@ -69,10 +73,11 @@ def main():
         result = prepare_csv(args.source, args.output)
     elif args.command == 'prepare-news':
         from .news_documents import prepare_news
-        result = prepare_news(args.source, args.output, args.chunk_size, args.overlap)
+        result = prepare_news(args.source, args.output, args.chunk_size, args.overlap,
+                              include_partial=args.include_partial, dry_run=args.dry_run)
     elif args.command == 'tag-chunks':
         from .tagging import tag_artifacts
-        result = tag_artifacts(args.pdf_source, args.news_source, args.output, args.companies,
+        result = tag_artifacts(None if args.news_only else args.pdf_source, args.news_source, args.output, args.companies,
                                model=args.model, revision=args.revision, threshold=args.threshold,
                                margin=args.margin, cache_dir=args.cache_dir, batch_size=args.batch_size)
     elif args.command == 'extract-pdfs':

@@ -140,6 +140,7 @@ uv run python scripts/demo_summary_branch.py
 | [docs/api-contract.md](docs/api-contract.md) | контракт фронт ↔ бэк |
 | [docs/database.md](docs/database.md) | сборка БД с нуля, проверка, обновление |
 | [docs/ingestion.md](docs/ingestion.md), [docs/tagging.md](docs/tagging.md), [docs/tags.md](docs/tags.md) | очистка, OCR, разметка, словарь тегов |
+| [docs/news-combined.md](docs/news-combined.md) | объединённый набор `news_combined.jsonl`: заголовки и анонсы (`--include-partial`), `--dry-run`, `--news-only` |
 | [docs/retrieval.md](docs/retrieval.md), [docs/orchestrator.md](docs/orchestrator.md) | поиск новостей, оркестратор |
 | [src/backend/summary_branch/README.md](src/backend/summary_branch/README.md) | ветка саммари: уверенность, валидация, хранилище |
 | [src/frontend/README.md](src/frontend/README.md) | фронт: запуск, экраны, моки |
