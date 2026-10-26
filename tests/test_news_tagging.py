@@ -160,6 +160,7 @@ class ImportRoutingTests(unittest.TestCase):
             with self.assertRaises(ValueError):news_format(root)
             (root/'manifest.json').unlink()
             self.assertEqual(news_format(root),'snapshot')
+            self.assertEqual(news_format(root/'news.jsonl'),'jsonl')
 
 
 class TaggingTests(unittest.TestCase):

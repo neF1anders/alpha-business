@@ -11,7 +11,7 @@ import psycopg
 from psycopg import sql
 
 from ingestion import database
-from ingestion.news_database import load_news, read_snapshot
+from ingestion.news_database import load_collector_jsonl, load_news, read_collector_jsonl, read_snapshot
 from ingestion.news_data import digest
 
 
@@ -40,6 +40,36 @@ def snapshot(root, rows):
     return root
 
 
+def collector_file(path, rows):
+    path.write_text(''.join(json.dumps(r, ensure_ascii=False)+'\n' for r in rows), encoding='utf-8')
+    return path
+
+
+def headline(number):
+    return dict(article(number), text='', text_sha256=None, retrieval_eligible=False,
+                content_status='metadata_only', quality_flags=['title_only'])
+
+
+class CollectorJsonlTests(unittest.TestCase):
+    def test_only_full_articles_are_read_and_import_is_unverified(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=collector_file(Path(tmp)/'news_combined.jsonl',[article(1),headline(2),article(3)])
+            _,_,rows,report,audit=read_collector_jsonl(path)
+            self.assertEqual(len(rows),2)
+            self.assertEqual((report['input'],report['eligible'],report['skipped_partial']),(3,2,1))
+            self.assertFalse(audit['verified'])
+
+    def test_broken_eligible_record_and_duplicates_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            short=dict(article(1),text='Коротко.',text_sha256=digest('Коротко.'))
+            with self.assertRaisesRegex(ValueError,'checksum/length'):
+                read_collector_jsonl(collector_file(Path(tmp)/'short.jsonl',[short]))
+            with self.assertRaisesRegex(ValueError,'Duplicate news_id'):
+                read_collector_jsonl(collector_file(Path(tmp)/'dup.jsonl',[article(1),article(1)]))
+            with self.assertRaisesRegex(ValueError,'No retrieval-eligible'):
+                read_collector_jsonl(collector_file(Path(tmp)/'empty.jsonl',[headline(1)]))
+
+
 class SnapshotTests(unittest.TestCase):
     def test_tampered_file_and_naive_dates_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -54,7 +84,7 @@ class SnapshotTests(unittest.TestCase):
 
 
 @unittest.skipUnless(os.environ.get('RUN_DB_TESTS') == '1', 'Set RUN_DB_TESTS=1')
-class NewsDatabaseTests(unittest.TestCase):
+class DisposableDatabase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.admin=psycopg.connect(os.environ.get('DATABASE_URL',''),autocommit=True)
@@ -71,6 +101,8 @@ class NewsDatabaseTests(unittest.TestCase):
         cls.admin.execute(sql.SQL('DROP DATABASE {}').format(sql.Identifier(cls.name)))
         cls.admin.close()
 
+
+class NewsDatabaseTests(DisposableDatabase):
     def test_repeat_expand_conflict_rollback_and_russian_search(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
@@ -99,6 +131,22 @@ class NewsDatabaseTests(unittest.TestCase):
             with database.connect() as c:
                 self.assertEqual(c.execute('SELECT count(*) FROM insights.news_articles').fetchone()[0],2)
                 self.assertEqual(c.execute('SELECT count(*) FROM insights.news_imports').fetchone()[0],2)
+
+
+class CollectorJsonlDatabaseTests(DisposableDatabase):
+    def test_collector_jsonl_repeat_and_combined_file_add_only_new_articles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            old=collector_file(root/'news.jsonl',[article(10),article(11)])
+            self.assertEqual(load_collector_jsonl(old)['added'],2)
+            self.assertEqual(load_collector_jsonl(old)['status'],'unchanged')
+            combined=collector_file(root/'news_combined.jsonl',[headline(12),article(10),article(13)])
+            result=load_collector_jsonl(combined)
+            self.assertEqual((result['added'],result['snapshot_records']),(1,2))
+            with database.connect() as c:
+                receipt=c.execute('SELECT raw_receipt FROM insights.news_articles WHERE news_id=%s',
+                                  (article(13)['news_id'],)).fetchone()[0]
+                self.assertEqual(receipt,dict(kind='collector_jsonl',verified=False,source_file='news_combined.jsonl'))
 
 
 if __name__=='__main__':unittest.main()

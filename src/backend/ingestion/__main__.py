@@ -11,6 +11,7 @@ from .pdf_data import extract_pdfs
 def news_format(source, requested='auto'):
     if requested != 'auto':return requested
     root=Path(source)
+    if root.is_file():return 'jsonl'
     chunk_manifest=(root/'manifest.json').is_file()
     snapshot=(root/'report.json').is_file() and (root/'news.jsonl').is_file()
     if chunk_manifest == snapshot:
@@ -61,9 +62,9 @@ def main():
     for name, directory in [('load-csv', 'csv'), ('load-pdfs', 'tagged/pdf')]:
         load = commands.add_parser(name)
         load.add_argument('--source', default=f'data/processed/{directory}')
-    news = commands.add_parser('load-news', help='Load a prepared chunk manifest or an audited news snapshot')
+    news = commands.add_parser('load-news', help='Load a prepared chunk manifest, an audited news snapshot or full articles from a collector JSONL')
     news.add_argument('--source', default='data/processed/tagged/news')
-    news.add_argument('--format', choices=['auto','chunks','snapshot'], default='auto')
+    news.add_argument('--format', choices=['auto','chunks','snapshot','jsonl'], default='auto')
     find = commands.add_parser('search', help='Smoke-test full-text retrieval')
     find.add_argument('query')
     find.add_argument('--limit', type=int, default=5)
@@ -100,6 +101,9 @@ def main():
             if format_ == 'snapshot':
                 from .news_database import load_news
                 result = load_news(args.source)
+            elif format_ == 'jsonl':
+                from .news_database import load_collector_jsonl
+                result = load_collector_jsonl(args.source)
             else:
                 loaded = database.load_news(args.source)
                 result = {'documents': len(loaded), 'statuses': dict(Counter(item['status'] for item in loaded))}
