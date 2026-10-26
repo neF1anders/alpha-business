@@ -27,6 +27,10 @@ HIGH, MEDIUM = 0.75, 0.55
 STRICT_NUMERIC = True          # любое число проверяемого утверждения должно встречаться в источнике
 NUMERIC_MISS_GROUNDING = 0.4   # прежнее правило (при STRICT_NUMERIC=False): число и обоснованность ниже порога
 MIN_CLAIM_LEX = 0.5            # доля основ слов проверяемого утверждения, найденных в источнике, не ниже (0 выключает)
+DIRECTION_CHECK = True         # направление изменения в утверждении не противоположно цитате источника
+UNIT_CHECK = True              # число утверждения не должно встречаться в источнике с другим масштабом или единицей
+ENTITY_CHECK = True            # названия, кавычные заголовки и тикеры утверждения должны быть в источнике
+INFERENCE_CHECK = True         # вывод (model/hypothesis) без опоры на источник делает черновик невалидным
 FAITHFUL_GROUNDING = 0.6       # утверждение считается подтверждённым источником (для SQS)
 NUMERIC_MISS_CAP = 0.5         # потолок оценки при выдуманном числе или слабо подтверждённом утверждении
 RELEVANCE_FLOOR, RELEVANCE_CAP = 0.25, 0.45   # ниже порога релевантности оценка не выше потолка
@@ -66,6 +70,190 @@ def _lexical_overlap(claim_text: str, evidence_text: str) -> float:
     """Доля основ слов утверждения, найденных в источнике; у утверждения без слов 1.0."""
     claim_stems = _stems(claim_text)
     return len(claim_stems & _stems(evidence_text)) / len(claim_stems) if claim_stems else 1.0
+
+
+# --------------------------------------------------------------------------- смысловые проверки утверждений
+# Корни слов с направлением изменения. Список консервативный: только глаголы и существительные, у которых
+# есть однозначная противоположность. «сохранил / изменил» не включено: «изменил» направления не несёт.
+_UP_PREFIXES = ("вырос", "выраст", "возрос", "возраст", "повыс", "повыш", "подня", "подним", "увелич", "ускор",
+                "укреп", "подорож", "удорож", "расшир", "приток", "профицит", "нарасти", "нарастан", "улучш")
+_UP_WORDS = frozenset({"рост", "роста", "росту", "ростом", "росте", "выше"})
+_DOWN_PREFIXES = ("сниз", "снижен", "снижа", "упал", "упад", "падени", "сократ", "сокращ", "пониз", "уменьш",
+                  "замедл", "ослаб", "подешев", "удешев", "сужен", "сузи", "отток", "дефицит", "опуст", "опуск",
+                  "спад", "ухудш", "просел")
+_DOWN_WORDS = frozenset({"ниже"})
+_NEGATIONS = frozenset({"не", "нет", "без", "никак"})
+_CYR_WORD = re.compile(r"[а-яё]+")
+
+
+def _directions(text: str) -> dict[int, list[str]]:
+    """Слова направления без отрицания: +1 рост, -1 падение. «Не снизил» направления не задаёт."""
+    found: dict[int, list[str]] = {1: [], -1: []}
+    previous = ""
+    for word in _CYR_WORD.findall(text.lower()):
+        if previous not in _NEGATIONS:
+            if word in _UP_WORDS or word.startswith(_UP_PREFIXES):
+                found[1].append(word)
+            elif word in _DOWN_WORDS or word.startswith(_DOWN_PREFIXES):
+                found[-1].append(word)
+        previous = word
+    return found
+
+
+def direction_conflicts(claim_text: str, quote: str) -> list[str]:
+    """Слова направления утверждения, чья противоположность есть в цитате, а самого направления в цитате нет."""
+    claim, source = _directions(claim_text), _directions(quote)
+    return [word for sign in (1, -1) if source[-sign] and not source[sign] for word in claim[sign]]
+
+
+_UNIT_TEXT_FIXES = (("п.п.", "пп"), ("б.п.", "бп"), ("тыс.", "тыс"), ("млн.", "млн"), ("млрд.", "млрд"),
+                    ("трлн.", "трлн"), ("руб.", "руб"), ("долл.", "долл"))
+_NUM_UNIT = re.compile(r"(\d+(?:[.,]\d+)?)\s*(%|₽|\$|€|[^\W\d_]+(?:\s+[^\W\d_]+)?)")
+_SCALES = (("тыс", "тыс"), ("млн", "млн"), ("миллион", "млн"), ("млрд", "млрд"), ("миллиард", "млрд"),
+           ("трлн", "трлн"), ("триллион", "трлн"))
+_CURRENCIES = (("руб", "руб"), ("₽", "руб"), ("долл", "usd"), ("$", "usd"), ("евро", "eur"), ("€", "eur"),
+               ("юан", "cny"))
+
+
+def _unit_labels(unit_text: str) -> set[str]:
+    """Единицы после числа в виде «группа:метка». Группа сравнивается отдельно: масштаб, доля, валюта."""
+    labels: set[str] = set()
+    words = unit_text.lower().split()
+    for index, word in enumerate(words):
+        if word == "%" or (word.startswith("процент") and not word.startswith("процентн")):
+            labels.add("ratio:%")
+        elif word == "пп" or word.startswith("пункт") or (
+                word.startswith("процентн") and index + 1 < len(words) and words[index + 1].startswith("пункт")):
+            labels.add("ratio:пп")
+        elif word == "бп" or word.startswith("базис"):
+            labels.add("ratio:бп")
+        for prefix, label in _SCALES:
+            if word.startswith(prefix):
+                labels.add(f"scale:{label}")
+        for prefix, label in _CURRENCIES:
+            if word.startswith(prefix):
+                labels.add(f"cur:{label}")
+    return labels
+
+
+def _units_by_value(text: str) -> dict[str, set[str]]:
+    for old, new in _UNIT_TEXT_FIXES:
+        text = text.replace(old, new)
+    units: dict[str, set[str]] = {}
+    for number, unit_text in _NUM_UNIT.findall(text):
+        for value in _numbers(number):
+            units.setdefault(value, set()).update(_unit_labels(unit_text))
+    return units
+
+
+def unit_conflicts(claim_text: str, evidence_text: str) -> list[str]:
+    """Числа утверждения, которые есть в источнике, но с другим масштабом или единицей («12 млн» против «12 млрд»).
+
+    Число без единицы не проверяется: пересказ вправе её опустить.
+    """
+    source = _units_by_value(evidence_text)
+    conflicts: list[str] = []
+    for value, labels in _units_by_value(claim_text).items():
+        for group in ("scale", "ratio", "cur"):
+            claimed = {x for x in labels if x.startswith(group)}
+            known = {x for x in source.get(value, set()) if x.startswith(group)}
+            if claimed and known and not claimed & known:
+                conflicts.append(f"{value} {sorted(claimed)[0].split(':')[1]}")
+    return conflicts
+
+
+_ENTITY_ALLOWED_STEMS = ("росси", "банк", "центр", "альфа", "мосби", "моско", "федер")   # свои и общие названия
+_CURRENCY_CODES = frozenset({"usd", "eur", "cny", "rub", "cnh", "aed", "kzt", "try", "gbp"})
+_NAME_WORD = re.compile(r"[A-Za-zА-Яа-яЁё][\w-]*")
+_CYR_ABBREVIATION = re.compile(r"[А-ЯЁ]{2,}")
+_QUOTED_TITLE =re.compile(r"«([^»]{2,80})»")
+_SENTENCE_START = ".!?:;—–«(\""
+
+
+def _is_name_word(word: str) -> bool:
+    """Слово с заглавной буквы; кириллические аббревиатуры (ВВП, МРОТ, ЕАЭС) не считаем: модель вправе их раскрывать."""
+    if not word[0].isupper() or _CYR_ABBREVIATION.fullmatch(word):
+        return False
+    return len(word) >= 4 or word.isascii()
+
+
+def _capitalized_names(text: str) -> list[list[str]]:
+    """Последовательности слов с заглавной буквы вне начала предложения: «Совет Федерации», «Мосбирже», «Bloomberg»."""
+    names: list[list[str]] = []
+    current: list[str] = []
+    for match in _NAME_WORD.finditer(text):
+        word = match.group()
+        before = text[:match.start()].rstrip()
+        at_start = not before or before[-1] in _SENTENCE_START
+        if _is_name_word(word) and not at_start:
+            current.append(word)
+        elif current:
+            names.append(current)
+            current = []
+    if current:
+        names.append(current)
+    return names
+
+
+def _present(word: str, haystack: str) -> bool:
+    low = word.lower()
+    if low in _CURRENCY_CODES or any(low.startswith(stem) for stem in _ENTITY_ALLOWED_STEMS):
+        return True
+    return (low if low.isascii() else low[:5]) in haystack
+
+
+def entity_conflicts(claim_text: str, evidence_text: str) -> list[str]:
+    """Названия из утверждения, которых нет в источнике: выдуманные компании, чужие организации, тикеры."""
+    haystack = evidence_text.lower()
+    found = [title for title in _QUOTED_TITLE.findall(claim_text)]
+    found += [" ".join(name) for name in _capitalized_names(_QUOTED_TITLE.sub(" ", claim_text))]
+    missing: list[str] = []
+    for entity in found:
+        parts = [part for part in re.split(r"[\s-]+", entity) if part]
+        if any(not _present(part, haystack) for part in parts):
+            missing.append(entity)
+    return missing
+
+
+def claim_problems(claim: Claim, evidence_text: str) -> list[str]:
+    """Человекочитаемые причины, почему проверяемое утверждение не прошло; пусто, если всё в порядке.
+
+    Те же предикаты, что и у флагов content_signals, поэтому текст причин и решение валидатора не расходятся.
+    """
+    problems: list[str] = []
+    missing = sorted(_numbers(claim.text) - _numbers(evidence_text))
+    if missing:
+        problems.append(f"число {', '.join(missing)} не найдено в источнике")
+    if DIRECTION_CHECK and (words := direction_conflicts(claim.text, _quote_text(claim, evidence_text))):
+        problems.append(f"направление «{words[0]}» противоположно источнику")
+    if UNIT_CHECK and (units := unit_conflicts(claim.text, evidence_text)):
+        problems.append(f"масштаб или единица числа {units[0]} не совпадает с источником")
+    if ENTITY_CHECK and (names := entity_conflicts(claim.text, evidence_text)):
+        problems.append(f"название «{names[0]}» не найдено в источнике")
+    if MIN_CLAIM_LEX and _lexical_overlap(claim.text, evidence_text) < MIN_CLAIM_LEX:
+        problems.append("слова утверждения почти не встречаются в источнике")
+    return problems
+
+
+def _quote_text(claim: Claim, fallback: str) -> str:
+    """Цитаты утверждения: направление сверяется с предложением-опорой, а не со всей новостью."""
+    return " ".join(e.quote for e in claim.evidence if e.quote) or fallback
+
+
+# Флаги сигналов, которые, как и numeric_miss/unsupported_claim, делают черновик невалидным и ограничивают оценку.
+CONTENT_FLAG_REASONS = (
+    ("direction_miss", "направление изменения противоположно источнику"),
+    ("unit_miss", "масштаб или единица числа не совпадает с источником"),
+    ("entity_miss", "название из утверждения не найдено в источнике"),
+    ("ungrounded_inference", "вывод без опоры на источник"),
+)
+
+
+def passes_validation(signals: ContentSignals, min_grounding: float) -> bool:
+    """Структура целая, числа, слова, смысл и названия утверждений опираются на источник, факты обоснованы."""
+    return (signals.structure_ok and not signals.numeric_miss and not signals.unsupported_claim
+            and not any(getattr(signals, flag) for flag, _ in CONTENT_FLAG_REASONS)
+            and signals.grounding >= min_grounding)
 
 
 def lead_from_news(n: RankedNewsItem) -> LeadRef:
@@ -135,6 +323,12 @@ def content_signals(req: SummaryRequest, draft: SummaryDraft, claims: list[Claim
         numeric_miss = any(_numbers(c.text) and (c.grounding or 0) < NUMERIC_MISS_GROUNDING for c in checked)
     unsupported_claim = bool(MIN_CLAIM_LEX) and any(
         _lexical_overlap(c.text, evidence[id(c)]) < MIN_CLAIM_LEX for c in checked)
+    direction_miss = DIRECTION_CHECK and any(
+        direction_conflicts(c.text, _quote_text(c, evidence[id(c)])) for c in checked)
+    unit_miss = UNIT_CHECK and any(unit_conflicts(c.text, evidence[id(c)]) for c in checked)
+    entity_miss = ENTITY_CHECK and any(entity_conflicts(c.text, evidence[id(c)]) for c in checked)
+    ungrounded_inference = INFERENCE_CHECK and any(
+        c.type in (ClaimType.MODEL, ClaimType.HYPOTHESIS) and not c.evidence for c in claims)
 
     source_quality = max((SOURCE_PRIOR[s.kind] for s in sources), default=0.0)
 
@@ -155,7 +349,9 @@ def content_signals(req: SummaryRequest, draft: SummaryDraft, claims: list[Claim
     sqs = (0.45 * faith + 0.25 * coverage + 0.15 * spec + 0.15 * brev) if structure_ok else 0.0
 
     return ContentSignals(grounding=round(grounding, 3), source_quality=source_quality, claim_mix=round(claim_mix, 3),
-                          numeric_miss=numeric_miss, unsupported_claim=unsupported_claim, faithfulness=round(faith, 3), coverage=round(coverage, 3),
+                          numeric_miss=numeric_miss, unsupported_claim=unsupported_claim, direction_miss=direction_miss,
+                          unit_miss=unit_miss, entity_miss=entity_miss, ungrounded_inference=ungrounded_inference,
+                          faithfulness=round(faith, 3), coverage=round(coverage, 3),
                           specificity=spec, brevity=round(brev, 3), structure_ok=structure_ok,
                           sqs=round(_clip(sqs), 3))
 
@@ -242,6 +438,10 @@ def company_confidence(signals: ContentSignals, lead: LeadRef, topic: str, compa
     if signals.unsupported_claim:
         score = min(score, NUMERIC_MISS_CAP)
         reasons.append("утверждение слабо подтверждено текстом источника")
+    for flag, reason in CONTENT_FLAG_REASONS:
+        if getattr(signals, flag):
+            score = min(score, NUMERIC_MISS_CAP)
+            reasons.append(reason)
     if not has_sources:
         score = 0.0
         reasons.append("нет ни одного источника")

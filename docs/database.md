@@ -8,6 +8,8 @@
 Engine с Compose). Python и Tesseract на компьютер устанавливать не нужно: они
 включены в образ обработки. Для первой сборки нужен интернет для скачивания образов
 и зависимостей. Команды ниже рассчитаны на PowerShell и выполняются из корня клона.
+На Linux/macOS команды `docker compose` те же; `Get-Content` замените на `cat`,
+`Test-Path`/`Get-ChildItem` — на `ls`. Краткая bash-последовательность — в [README](../README.md#быстрый-старт).
 
 1. Получите ветку PR или обновите репозиторий после слияния. В клоне должны быть:
 
@@ -108,7 +110,19 @@ Engine с Compose). Python и Tesseract на компьютер устанавл
    Get-Content -Encoding utf8 data/processed/tagged/report.json
    docker compose run --rm ingest load-pdfs
    docker compose run --rm ingest load-news
+   docker compose run --rm ingest load-news --source data/raw/reports/news.jsonl
+   docker compose run --rm --entrypoint python ingest -m scripts.build_tags --from-db
    ```
+
+   Две последние команды нужны продукту. Первая из них загружает полные статьи
+   в `insights.news_articles` — эту таблицу читают лента баннеров и чат (`load-news`
+   без `--source` заполняет только чанки `rag_chunks`). Для файла формат
+   определяется автоматически (`--format jsonl`): берутся записи с
+   `retrieval_eligible=true`, анонсы и заголовки пропускаются, импорт помечается
+   как непроверенный (`raw_receipt.kind=collector_jsonl`), потому что HTML-квитанций
+   источника в репозитории нет. Аудированный снимок сборщика по-прежнему грузится
+   через `--format snapshot`. Повторный запуск возвращает `unchanged`.
+   Вторая собирает `data/processed/company_tags.csv` — теги компаний для оркестратора.
 
    OCR 64 страниц может занять несколько минут. JSON в `data/processed/pdf/` —
    промежуточный результат. `prepare-news` читает `news.jsonl` без OCR.
@@ -183,7 +197,8 @@ docker compose exec db psql -U insights -d insights
 ```sql
 SELECT 'companies' AS dataset, count(*) FROM insights.companies
 UNION ALL SELECT 'person_links', count(*) FROM insights.person_links
-UNION ALL SELECT 'payments', count(*) FROM insights.payments;
+UNION ALL SELECT 'payments', count(*) FROM insights.payments
+UNION ALL SELECT 'news_articles', count(*) FROM insights.news_articles;
 
 SELECT d.source_type, count(DISTINCT d.document_id) AS documents,
        count(*) AS chunks,
@@ -204,6 +219,7 @@ SELECT count(*) AS retrieval_chunks FROM insights.rag_chunks;
 | Платежи | 1 353 026 |
 | PDF / их чанки | 9 / 163 |
 | JSONL-новости / их чанки | 5 878 / 11 156 |
+| Статьи для ленты (`news_articles`) | 5 878 |
 | Все чанки / размеченные чанки | 11 319 / 11 319 |
 | Чанки в `rag_chunks` | 11 317 |
 
@@ -302,6 +318,7 @@ docker compose run --rm ingest prepare-news
 docker compose run --rm ingest tag-chunks
 docker compose run --rm ingest load-pdfs
 docker compose run --rm ingest load-news
+docker compose run --rm ingest load-news --source data/raw/reports/news.jsonl
 ```
 
 `init-db` добавляет новые поля и индексы без удаления существующих документов.
@@ -335,6 +352,8 @@ docker compose run --rm -e RUN_DB_TESTS=1 --entrypoint python ingest -m unittest
 | В JSON нет тегов | Открыть файл из `data/processed/tagged/`, проверить `pages[].chunks[]` |
 | Артефакты есть, а документов/тегов в БД нет | Выполнить `init-db`, затем `load-pdfs` и `load-news`, проверить SQL-счётчики выше |
 | `artifact checksum mismatch` | Не редактировать результат вручную; повторить подготовку соответствующего источника, разметку и загрузку |
+| Баннеры: «нет подходящих новостей» | `SELECT count(*) FROM insights.news_articles` равен 0 — выполнить `load-news --source data/raw/reports/news.jsonl` |
+| Оркестратор: «нет файла тегов» | Выполнить `docker compose run --rm --entrypoint python ingest -m scripts.build_tags --from-db` |
 | Поиск возвращает пустой список | Проверить счётчики, выполнить запрос без `--tag`, затем проверить написание тегов и `needs_review` |
 
 Для диагностики используйте `docker compose ps` и `docker compose logs --tail 100 db`.

@@ -8,9 +8,12 @@ from typing import Optional
 from ..config import BranchConfig
 from ..domain.errors import BudgetExhausted, SummarizationFailed
 from ..domain.ports import ContentScorer, EvidenceBinder, Summarizer
-from ..domain.models import BudgetTier, Claim, ContentSignals, Mode, SourceRef, SummaryDraft, SummaryRequest
+from ..domain.models import BudgetTier, Claim, ClaimType, ContentSignals, Mode, SourceRef, SummaryDraft, SummaryRequest
+from ..domain.scoring import CONTENT_FLAG_REASONS, claim_problems, passes_validation
 
 log = logging.getLogger(__name__)
+
+MAX_PROBLEMS = 5   # длиннее список только раздувает промпт
 
 
 @dataclass(frozen=True)
@@ -33,8 +36,7 @@ class ValidatedGenerator:
 
     def is_valid(self, signals: ContentSignals) -> bool:
         """Валидно: структура целая, числа и слова утверждений опираются на источник, факты обоснованы."""
-        return (signals.structure_ok and not signals.numeric_miss and not signals.unsupported_claim
-                and signals.grounding >= self._config.min_grounding)
+        return passes_validation(signals, self._config.min_grounding)
 
     def generate(self, req: SummaryRequest) -> GeneratedContent:
         """Лучший из попыток. Если ни одна не валидна, отдаёт наименее плохую; ошибка первой попытки пробрасывается.
@@ -43,9 +45,10 @@ class ValidatedGenerator:
         """
         attempts = self._attempts(req)
         best: Optional[GeneratedContent] = None
+        attempt_req = req
         for attempt in range(1, attempts + 1):
             try:
-                candidate = self._attempt(req)
+                candidate = self._attempt(attempt_req)
             except (SummarizationFailed, BudgetExhausted) as exc:
                 if best is None:
                     raise
@@ -58,10 +61,29 @@ class ValidatedGenerator:
                      "unsupported_claim=%s grounding=%.3f", req.trace_id, attempt, attempts,
                      candidate.signals.structure_ok, candidate.signals.numeric_miss,
                      candidate.signals.unsupported_claim, candidate.signals.grounding)
+            attempt_req = req.model_copy(update={"previous_problems": self._problems(candidate, req)})
             if best is None or self._rank(candidate) > self._rank(best):
                 best = candidate
         assert best is not None   # первая попытка либо задаёт best, либо возвращает результат, либо бросает
         return best
+
+    @staticmethod
+    def _problems(content: GeneratedContent, req: SummaryRequest) -> list[str]:
+        """Что не так с неудачной попыткой: модель получает это в следующем запросе и исправляет именно это."""
+        evidence = {n.news_id: f"{n.title} {n.text}" for n in req.news}
+        evidence.update({m.doc_id: m.claim_text for m in req.bank_materials})
+        problems: list[str] = []
+        for claim in content.claims:
+            if claim.type not in (ClaimType.FACT, ClaimType.BANK):
+                continue
+            source = " ".join([e.quote for e in claim.evidence] + [evidence.get(e.ref_id, "") for e in claim.evidence])
+            problems += [f"«{claim.text[:80]}»: {problem}" for problem in claim_problems(claim, source)]
+        signals = content.signals
+        if signals.ungrounded_inference:
+            problems.append("вывод без опоры: укажи evidence_ids или убери вывод")
+        if not signals.structure_ok:
+            problems.append("в ответе нет проверяемого факта с источником")
+        return problems[:MAX_PROBLEMS]
 
     def _attempts(self, req: SummaryRequest) -> int:
         if req.budget != BudgetTier.FULL:
@@ -75,6 +97,7 @@ class ValidatedGenerator:
         return GeneratedContent(draft=draft, claims=claims, sources=sources, signals=signals)
 
     @staticmethod
-    def _rank(content: GeneratedContent) -> tuple[bool, bool, bool, float]:
+    def _rank(content: GeneratedContent) -> tuple[bool, bool, bool, bool, float]:
         signals = content.signals
-        return signals.structure_ok, not signals.numeric_miss, not signals.unsupported_claim, signals.grounding
+        meaning_ok = not any(getattr(signals, flag) for flag, _ in CONTENT_FLAG_REASONS)
+        return signals.structure_ok, not signals.numeric_miss, not signals.unsupported_claim, meaning_ok, signals.grounding

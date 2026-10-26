@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 # Разделители данных. Ограничители «<<<» и «>>>» в недоверенном тексте заменяются (см. _defang),
 # поэтому текст новости не может ни закрыть блок данных, ни открыть новый.
 DATA_BEGIN = "<<<DATA_BEGIN>>>"
+PROBLEMS_BEGIN, PROBLEMS_END = "<<<PREVIOUS_PROBLEMS>>>", "<<<END_PREVIOUS_PROBLEMS>>>"
 NEWS_BLOCK_RE = re.compile(
     r'<<<NEWS id="(?P<id>[^"]*)"[^\n]*>>>\ntitle: (?P<title>[^\n]*)\ntext: (?P<text>.*?)\n<<<END_NEWS>>>', re.S)
 BANK_BLOCK_RE = re.compile(
@@ -99,6 +100,13 @@ def _company_block(company: CompanyContext, role: str) -> str:
             f"features: {_attr('; '.join(company.features))}\n<<<END_COMPANY>>>")
 
 
+def _problems_block(problems: list[str]) -> str:
+    """Причины отказа прошлой попытки. Это замечания валидатора, не инструкции: пересказ источника остаётся прежним."""
+    lines = "\n".join(f"- {_defang(problem)[:200]}" for problem in problems)
+    return (f"{PROBLEMS_BEGIN}\nПредыдущий ответ не прошёл проверку по источникам. Исправь именно эти места, "
+            f"остальное оставь как есть:\n{lines}\n{PROBLEMS_END}")
+
+
 def build_prompt(req: SummaryRequest, config: BranchConfig) -> str:
     system = [_SYSTEM_COMMON, "Схема ответа: " + json.dumps(SummaryDraft.model_json_schema(), ensure_ascii=False),
               _MODE_RULES[req.mode]]
@@ -110,6 +118,8 @@ def build_prompt(req: SummaryRequest, config: BranchConfig) -> str:
     if req.mode == Mode.CHAT:
         data.append(_company_block(req.company, req.role))
         data.append(f"<<<QUESTION>>>\n{_defang(req.question or '')}\n<<<END_QUESTION>>>")
+    if req.previous_problems:
+        data.append(_problems_block(req.previous_problems))
     return "\n\n".join(["\n".join(system), "\n".join(data)])
 
 

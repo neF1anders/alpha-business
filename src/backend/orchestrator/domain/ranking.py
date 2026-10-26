@@ -21,6 +21,19 @@ MODIFIERS: tuple[tuple[str, str, float], ...] = (
     ("factor:key_rate", "product:deposit", 0.1),
 )
 
+# Ролевая линза: роль -> префиксы тегов, совпадение по которым весит больше. Действует только при явной роли
+# (демо-вход), чтобы выдача без роли не менялась; порядок внутри уже совпавших с профилем новостей, не отбор.
+ROLE_FOCUS: dict[str, tuple[str, ...]] = {
+    "owner": ("sector:", "okved:", "factor:commodities", "factor:construction_market"),
+    "ceo": ("sector:", "okved:", "factor:consumer_demand", "region:"),
+    "cfo": ("factor:key_rate", "factor:fx"),
+    "treasurer": ("factor:key_rate", "factor:fx"),
+    "chief_accountant": ("factor:labor", "region:"),
+    "procurement": ("country:", "factor:fx", "factor:commodities"),
+    "sales": ("factor:consumer_demand", "sector:", "region:"),
+}
+ROLE_FOCUS_WEIGHT = 0.5
+
 SOURCE_WEIGHT = {SourceKind.PRIMARY: 1.0, SourceKind.BANK: 0.9, SourceKind.MEDIA: 0.6}
 
 W_RELEVANCE, W_RETRIEVAL, W_FRESHNESS, W_SOURCE = 0.55, 0.20, 0.15, 0.10
@@ -75,6 +88,9 @@ class TagReranker:
         relevance = 1 - miss
         if require_tag_match and relevance < self._min_relevance:
             return None
+        focus = role_focus(profile, used)
+        if focus:
+            relevance = 1 - (1 - relevance) * (1 - ROLE_FOCUS_WEIGHT)
 
         age_days = max((now - item.published_at).total_seconds() / 86400, 0.0)
         freshness = 0.5 ** (age_days / self._half_life)
@@ -84,5 +100,14 @@ class TagReranker:
                  + w_fresh * freshness + w_src * source)
         if score < self._min_score:
             return None
-        reasons = (f"relevance={relevance:.2f}", f"freshness={freshness:.2f}", f"source={source:.1f}")
+        reasons = (f"relevance={relevance:.2f}", f"freshness={freshness:.2f}", f"source={source:.1f}",
+                   *((f"role_focus={profile.role}:{','.join(focus)}",) if focus else ()))
         return RankedNews(item=item, score=round(min(score, 1.0), 4), matched_tags=tuple(used), reasons=reasons)
+
+
+def role_focus(profile: CompanyProfile, matched: list[str]) -> tuple[str, ...]:
+    """Совпавшие теги, которые входят в фокус явно выбранной роли."""
+    if not profile.audience:
+        return ()
+    prefixes = ROLE_FOCUS.get(profile.role, ())
+    return tuple(tag for tag in matched if tag.startswith(prefixes))

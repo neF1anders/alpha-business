@@ -117,6 +117,21 @@ class ClientApiTests(unittest.TestCase):
         client.post("/api/companies/U_1/chat", json={"question": "Что это значит?", "banner_id": banner["banner_id"]})
         self.assertEqual(retriever.queries[-1].question, banner["sources"][0]["title"])
 
+    def test_roles_get_separate_banners_and_feedback(self):
+        cfo = self.client.get("/api/companies/U_1/signals?role=cfo").json()["items"]
+        sales = self.client.get("/api/companies/U_1/signals?role=sales").json()["items"]
+        self.assertTrue(cfo and sales)
+        self.assertFalse({b["banner_id"] for b in cfo} & {b["banner_id"] for b in sales})
+        r = self.client.post(f"/api/companies/U_1/signals/{cfo[0]['banner_id']}/dismiss?role=cfo")
+        self.assertEqual(r.status_code, 204)
+        self.assertEqual(self.client.get("/api/companies/U_1/signals?role=cfo").json()["counts"]["hidden"], 1)
+        self.assertEqual(self.client.get("/api/companies/U_1/signals?role=sales").json()["counts"]["hidden"], 0)
+
+    def test_unknown_role_is_rejected(self):
+        r = self.client.get("/api/companies/U_1/signals?role=intern")
+        self.assertEqual(r.status_code, 422)
+        self.assertEqual(r.json()["error"], "invalid_request")
+
     def test_errors_use_frontend_format(self):
         r = self.client.get("/api/companies/U_404/signals")
         self.assertEqual((r.status_code, r.json()["error"]), (404, "company_not_found"))

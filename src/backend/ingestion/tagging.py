@@ -149,13 +149,14 @@ def tag_artifacts(pdf_source, news_source, output, companies, *, model=MODEL, re
                   threshold=0.30, margin=0.03, cache_dir='data/cache', batch_size=32, tagger=None):
     if not 0 <= threshold <= 1 or not 0 <= margin <= 1 or batch_size < 1:
         raise ValueError('Invalid classifier threshold, margin or batch size')
-    pdf_source, news_source, output = Path(pdf_source), Path(news_source), Path(output)
-    paths = [(p, 'pdf') for p in sorted(pdf_source.glob('*.pdf.json'))]
+    pdf_source = Path(pdf_source) if pdf_source is not None else None
+    news_source, output = Path(news_source), Path(output)
+    paths = [(p, 'pdf') for p in sorted(pdf_source.glob('*.pdf.json'))] if pdf_source else []
     if (news_source / 'manifest.json').exists():
         paths.extend((p, 'news') for p in artifact_paths(news_source))
     if not paths:
         raise ValueError('No prepared PDF/news artifacts. Run extraction first.')
-    if output.resolve() in {pdf_source.resolve(), news_source.resolve()}:
+    if output.resolve() in {p.resolve() for p in (pdf_source, news_source) if p is not None}:
         raise ValueError('Tag output must be separate from the input directories')
     tagger = tagger or Tagger(Vocabulary(companies), SemanticSector(model, revision, threshold, margin,
                                                                   str(Path(cache_dir) / 'models'), batch_size))
@@ -194,6 +195,8 @@ def tag_artifacts(pdf_source, news_source, output, companies, *, model=MODEL, re
         outputs[kind][path.name] = sha256(target)
     # Both tagged directories have manifests: stale artifacts cannot silently be imported.
     for kind, files in outputs.items():
+        if kind == 'pdf' and pdf_source is None:
+            continue
         write_json(output / kind / 'manifest.json', dict(version=1, outputs=files, tagging=tagger.settings))
     report = dict(counts=dict(counts), tags=dict(distribution.most_common()),
                   unmapped_countries=dict(unmapped), classifier=tagger.settings)

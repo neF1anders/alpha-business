@@ -27,6 +27,16 @@ FACTS_HEADLINE_RE = re.compile(r"<<<FACTS>>>\nheadline: (?P<headline>[^\n]*)")
 HEADLINE_MAX, FOR_YOU_MAX = 60, 200
 MIN_PATH_OVERLAP = 0.2       # доля основ слов пути, которые текст должен повторить: иначе он не про эту компанию
 MAX_PROMPT_PATHS = 4
+# Что важно должности: модель расставляет акценты в for_you, не меняя фактов. Неизвестная роль идёт как есть.
+ROLE_LENS = {
+    "owner": "собственник: стоимость бизнеса, долгосрочные риски отрасли, группа компаний",
+    "ceo": "генеральный директор: спрос, выручка, положение в отрасли и регионе",
+    "cfo": "финансовый директор: ставка, курс, стоимость долга, маржа",
+    "treasurer": "казначей: ликвидность, стоимость заёмных денег, валютные платежи",
+    "chief_accountant": "главный бухгалтер: зарплатный фонд, расчёты с контрагентами, регуляторика",
+    "procurement": "директор по закупкам и ВЭД: поставщики, импорт, курс, цены сырья",
+    "sales": "коммерческий директор: покупатели, спрос, цены продажи",
+}
 _ADVICE = re.compile(r"\b(рекоменду\w*|совету\w*|купите|продайте|захеджируйте|хеджируйте|переведите|оформите)\b", re.I)
 _CLIENT_PRODUCT = re.compile(r"\b(ваш\w*|у вас)\b[^.!?]{0,25}(кредит|лизинг|депозит|гарант|факторинг|зарплатн)", re.I)
 
@@ -40,7 +50,7 @@ _SYSTEM = f"""Ты аналитик банка. Напиши персональ�
 1. Опирайся только на факты из FACTS и пути влияния из PATHS: путь объясняет, через что новость касается компании.
 2. headline — до {HEADLINE_MAX} символов: что новость значит для этой компании.
 3. for_you — 1-2 предложения до {FOR_YOU_MAX} символов: назови путь влияния своими словами («ваши поставщики из \
-металлургии…», «ваша отрасль…») и последствие для компании.
+металлургии…», «ваша отрасль…») и последствие для компании. Выбирай путь и последствие, важные для role.
 4. Числа только из FACTS и PATHS, без изменений. Новых фактов и чисел не добавляй.
 5. Путь с пометкой hypothesis выведен из платежей и связей: формулируй осторожно («может», «вероятно»).
 6. Продукты банка упоминай, только если они есть в PATHS.
@@ -63,7 +73,7 @@ def build_personal_prompt(summary: ClusterSummary, company: CompanyContext, path
     data = [DATA_BEGIN,
             f"<<<FACTS>>>\nheadline: {_attr(summary.headline)}\ntopic: {_attr(summary.topic)}\n{facts}\n<<<END_FACTS>>>",
             f"{PERSONAL_BEGIN}\n{path_lines}\n<<<END_PATHS>>>",
-            f"<<<COMPANY>>>\nrole: {_attr(role)}\nfeatures: {_attr('; '.join(company.features[:5]))}\n<<<END_COMPANY>>>"]
+            f"<<<COMPANY>>>\nrole: {_attr(ROLE_LENS.get(role, role))}\nfeatures: {_attr('; '.join(company.features[:5]))}\n<<<END_COMPANY>>>"]
     schema = json.dumps(PersonalDraft.model_json_schema(), ensure_ascii=False)
     return "\n\n".join([_SYSTEM + "\n\nСхема ответа: " + schema, "\n".join(data)])
 
