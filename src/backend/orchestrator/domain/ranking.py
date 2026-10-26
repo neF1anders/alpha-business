@@ -37,6 +37,9 @@ ROLE_FOCUS_WEIGHT = 0.5
 SOURCE_WEIGHT = {SourceKind.PRIMARY: 1.0, SourceKind.BANK: 0.9, SourceKind.MEDIA: 0.6}
 
 W_RELEVANCE, W_RETRIEVAL, W_FRESHNESS, W_SOURCE = 0.55, 0.20, 0.15, 0.10
+# В чате новости отобраны по вопросу: совпадение с вопросом важнее профиля, иначе длинный материал
+# с тегами компании (заявление ЦБ) вытесняет заметки, которые отвечают на вопрос.
+CHAT_WEIGHTS = (0.25, 0.55, 0.10, 0.10)
 
 
 class TagReranker:
@@ -95,7 +98,7 @@ class TagReranker:
         age_days = max((now - item.published_at).total_seconds() / 86400, 0.0)
         freshness = 0.5 ** (age_days / self._half_life)
         source = SOURCE_WEIGHT[item.source_kind]
-        w_rel, w_ret, w_fresh, w_src = self._weights
+        w_rel, w_ret, w_fresh, w_src = self._weights if require_tag_match else CHAT_WEIGHTS
         score = (w_rel * relevance + w_ret * min(max(item.retrieval_score, 0.0), 1.0)
                  + w_fresh * freshness + w_src * source)
         if score < self._min_score:
